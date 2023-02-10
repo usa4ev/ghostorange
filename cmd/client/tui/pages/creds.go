@@ -6,12 +6,9 @@ import (
 	"github.com/rivo/tview"
 
 	"ghostorange/internal/app/model"
-	"ghostorange/internal/app/provider/httpp"
 )
 
-func (c *Constructor) credList() *tview.Flex {
-	flex := tview.NewFlex()
-	list := tview.NewList()
+func (c *Constructor) credList() listGenerator {
 	rflex := tview.NewFlex().
 		SetDirection(tview.FlexRow)
 	tLogin := tview.NewTextView()
@@ -22,52 +19,108 @@ func (c *Constructor) credList() *tview.Flex {
 	tPassword.SetTitle("Password: ")
 	tComment.SetTitle("Comment: ")
 
-	rflex.AddItem(tLogin, 1, 0, false).
-		AddItem(tPassword, 1, 0, false).
-		AddItem(tComment, 1, 0, false)
+	buttons := make(map[string]func())
 
-	flex.AddItem(list, 0, 1, true).
-		AddItem(rflex, 0, 1, false)
+	buttons["Add"] = func() {
+		c.forgetCurItem()
+		c.Pages.SwitchToPage(KeyFormCredentials)
+	}
+
+	buttons["Edit"] = func() {
+		if val, ok := c.CurItem.(model.ItemCredentials); ok && val.ID != "" {
+			c.Pages.SwitchToPage(KeyFormCredentials)
+		}
+	}
 
 	var data []model.ItemCredentials
 
-	list.SetFocusFunc(func() {
-		list.Clear()
-
-		var err error
-
-		val, err := c.Provider.GetData(model.KeyCredentials)
-		if err != nil {
-			// ToDo: handle error
-			fmt.Printf("failed to get data: %v", err)
-			return
-		}
-
+	addItemF := func(val any, list *tview.List) error {
 		var ok bool
-		data,ok = val.([]model.ItemCredentials)
-		if !ok{
-			// ToDo: handle error
-			_, ok = c.Provider.(httpp.Provider)
-			fmt.Printf("%v\n", ok)
-			fmt.Printf("data,ok = val.([]model.ItemCredentials); ok == %v", ok)
-			return
+		data, ok = val.([]model.ItemCredentials)
+		if !ok {
+			return fmt.Errorf("got unexpected data type; expected: %v",
+				model.GetItemTitle(model.KeyCards))
 		}
 
 		for _, item := range data {
 			list.AddItem(item.Name, item.Comment, '0', nil)
 		}
 
-		list.SetSelectedFunc(
-			func(index int, name string, second_name string, shortcut rune) {
-				item := data[index]
-				tLogin.Clear().SetText(item.Credentials.Login)
-				tPassword.Clear().SetText(item.Credentials.Password)
-				tComment.Clear().SetText(item.Comment)
-			})
+		return nil
+	}
 
-		
-		
+	selectedF := func(index int, name string, second_name string, shortcut rune) {
+
+		item := data[index]
+		tLogin.Clear().SetText(item.Credentials.Login)
+		tPassword.Clear().SetText(item.Credentials.Password)
+		tComment.Clear().SetText(item.Comment)
+
+		c.CurItem = item
+
+		c.Logger.Debugf("CurItem set: %v", c.CurItem)
+	}
+
+	rflex.AddItem(tLogin, 1, 0, false).
+		AddItem(tPassword, 1, 0, false).
+		AddItem(tComment, 1, 0, false).
+		SetBlurFunc(c.forgetCurItem)
+
+	return listGenerator{
+		btns:         buttons,
+		detail:       rflex,
+		Constructor:  c,
+		addItemFunc:  addItemF,
+		selectedFunc: selectedF,
+	}
+}
+
+func (c *Constructor) credForm() *tview.Form {
+	form := tview.NewForm()
+
+	form.SetFocusFunc(func() {
+		item := model.ItemCredentials{}
+
+		if val, ok := c.CurItem.(model.ItemCredentials); ok {
+			item = val
+		}
+		c.Logger.Debugf("filling the form using item %v", item)
+
+		form.AddTextView("ID", item.ID, 50, 1, false, false).
+			AddInputField("Name", item.Name, 25, nil, func(text string) {
+				item.Name = text
+			}).
+			AddInputField("Login", item.Credentials.Login, 25, nil, func(text string) {
+				item.Credentials.Login = text
+			}).
+			AddPasswordField("Password", item.Credentials.Password, 25, '*', func(text string) {
+				item.Credentials.Password = text
+			}).
+			AddTextArea("Comment", item.Comment, 25, 3, 0, func(text string) {
+				item.Comment = text
+			}).
+			AddButton("Save", func() {
+				//ToDo: error handling
+				if item.ID == "" {
+					if err := c.Adapter.AddData(model.KeyCredentials, item); err != nil {
+						c.ShowError(err.Error(), KeyFormCredentials)
+						return
+					}
+				} else {
+					if err := c.Adapter.UpdateData(model.KeyCredentials, item); err != nil {
+						c.ShowError(err.Error(), KeyFormCredentials)
+						return
+					}
+					c.CurItem = item
+				}
+				form.Clear(true)
+				c.Pages.SwitchToPage(KeyCredentials)
+			}).
+			AddButton("Cancel", func() {
+				form.Clear(true)
+				c.Pages.SwitchToPage(KeyCredentials)
+			})
 	})
 
-	return flex
+	return form
 }

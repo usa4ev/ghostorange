@@ -54,7 +54,7 @@ func Open(userID string, lifeTime time.Duration) (string, time.Time, error) {
 }
 
 
-const ctxKeyUserID contextKey = 0 // key to a userID context value
+const CtxKeyUserID contextKey = 0 // key to a userID context value
 
 var sessionErrNoUserID = errors.New("request ctx does not contain userID key")
 
@@ -63,14 +63,14 @@ type contextKey int
 // ReqWithSession adds userID value with CtxKeyUserID key 
 // to a given ctx
 func ReqWithSession(r *http.Request, usrID string) *http.Request {
-	ctx := context.WithValue(r.Context(), ctxKeyUserID, usrID)
+	ctx := context.WithValue(r.Context(), CtxKeyUserID, usrID)
 	return r.WithContext(ctx)
 }
 
 // UserIDFromCtx return userID from reques ctx value.
 // Throws err if theres none
 func UserIDFromCtx(r *http.Request) (string, error){
-	if val := r.Context().Value(ctxKeyUserID); val == nil{
+	if val := r.Context().Value(CtxKeyUserID); val == nil{
 		return "", sessionErrNoUserID
 	}else{
 		return val.(string), nil

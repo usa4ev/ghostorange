@@ -14,34 +14,31 @@ import (
 )
 
 type (
-	server struct {
-		httpsrv *http.Server
-		cfg     config
-		usrStrg auth.UsrStorage
+	Server struct {
+		httpsrv  *http.Server
+		cfg      config
+		usrStrg  auth.UsrStorage
 		dataStrg storage.Storage
 	}
 
 	config interface {
 		SrvAddr() string
-		// UseTLS() bool
-		// SslPath() string
+		DBDSN() string
 		SessionLifetime() time.Duration
 	}
 )
 
-func New(c config) *server {
-	strg := storage.New()
-
-	srv := server{cfg: c,
-		usrStrg: nil, // ToDo: implement methods
-		dataStrg: strg,}
+func New(c config, s storage.Storage) *Server {
+	srv := Server{cfg: c,
+		usrStrg:  s,
+		dataStrg: s}
 	r := router.NewRouter(&srv)
 	srv.httpsrv = &http.Server{Addr: c.SrvAddr(), Handler: r}
 
 	return &srv
 }
 
-func (srv *server) Handlers() []router.HandlerDesc {
+func (srv *Server) Handlers() []router.HandlerDesc {
 	return []router.HandlerDesc{
 		// POST: /users/register
 		{Method: "POST",
@@ -64,30 +61,51 @@ func (srv *server) Handlers() []router.HandlerDesc {
 			Path:    "/v1/data",
 			Handler: http.HandlerFunc(srv.GetData),
 			Middlewares: chi.Middlewares{
-				middleware.GzipMW},
+				middleware.GzipMW,
+				middleware.AuthorisationMW},
 		},
 
-		// {Method: "POST",
-		// Path: "/",
-		// Handler: http.HandlerFunc(srv.makeShort),
-		// Middlewares: chi.Middlewares{
-		// 	middleware.GzipMW,
-		// 	middleware.AuthMW(sm)}},
+		// POST: /data?data_type={data_type}
+		{Method: "POST",
+			Path:    "/v1/data",
+			Handler: http.HandlerFunc(srv.AddData),
+			Middlewares: chi.Middlewares{
+				middleware.GzipMW,
+				middleware.AuthorisationMW},
+		},
+
+		// PUT: /data?data_type={data_type}
+		{Method: "PUT",
+			Path:    "/v1/data",
+			Handler: http.HandlerFunc(srv.UpdateData),
+			Middlewares: chi.Middlewares{
+				middleware.GzipMW,
+				middleware.AuthorisationMW},
+		},
+
+		// GET: /data/count?data_type={data_type}
+		{Method: "GET",
+			Path:    "/v1/data/count",
+			Handler: http.HandlerFunc(srv.Count),
+			Middlewares: chi.Middlewares{
+				middleware.GzipMW,
+				middleware.AuthorisationMW},
+		},
 	}
 }
 
-func (srv *server) Run() error {
+func (srv *Server) Run() error {
 	// Run the server
 	// if srv.cfg.UseTLS() {
 	// 	return srv.httpsrv.ListenAndServeTLS(
 	// 		filepath.Join(srv.cfg.SslPath(), "example.crt"),
 	// 		filepath.Join(srv.cfg.SslPath(), "example.key"))
 	// } else {
-		return srv.httpsrv.ListenAndServe()
+	return srv.httpsrv.ListenAndServe()
 	// }
 }
 
-func (srv *server) Shutdown(ctx context.Context) error {
+func (srv *Server) Shutdown(ctx context.Context) error {
 	srv.httpsrv.Shutdown(ctx)
 	return nil
 }

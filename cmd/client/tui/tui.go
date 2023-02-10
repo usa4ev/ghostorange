@@ -2,39 +2,54 @@ package tui
 
 import (
 	"github.com/rivo/tview"
+	"go.uber.org/zap"
 
 	"ghostorange/cmd/client/tui/pages"
-	"ghostorange/internal/app/provider"
+	"ghostorange/internal/app/adapter"
 )
 
 type (
 	Application struct {
 		tviewApp *tview.Application
-		provider provider.Provider
+		adapter  adapter.Adapter
 		pages    *tview.Pages
 	}
 )
 
-func New(provider provider.Provider) *Application {
+func New(adapter adapter.Adapter, logger *zap.SugaredLogger) *Application {
+
+	app := tview.NewApplication()
 
 	builder := pages.Constructor{
-		Provider: provider,
-		Pages:    tview.NewPages(),
+		Adapter: adapter,
+		Pages:   tview.NewPages(),
+		Logger:  logger,
 	}
 
-	// creating ui pages
+	// Create ui pages
 	builder.Build(pages.KeyLoginForm)
 	builder.Build(pages.KeyRegistrationForm)
 	builder.Build(pages.KeyMenu)
-	builder.Build(pages.KeyCredentials)
 
-	app := tview.NewApplication().
-		SetRoot(builder.GetPages().SwitchToPage(pages.KeyLoginForm), true).
+	// builder.Build(pages.KeyCredentials)
+	builder.Build(pages.KeyFormCredentials)
+
+	// builder.Build(pages.KeyText)
+	builder.Build(pages.KeyFormText)
+
+	// builder.Build(pages.KeyCards)
+	builder.Build(pages.KeyFormCards)
+
+	// builder.Build(pages.KeyBinary)
+	builder.Build(pages.KeyFormBinary)
+
+	app.SetRoot(builder.GetPages().
+		SwitchToPage(pages.KeyLoginForm), true).
 		EnableMouse(true)
 
 	return &Application{
 		tviewApp: app,
-		provider: provider,
+		adapter:  adapter,
 		pages:    builder.GetPages(),
 	}
 }

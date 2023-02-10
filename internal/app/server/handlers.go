@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,12 +14,49 @@ import (
 	"ghostorange/internal/app/model"
 )
 
-const ctJSON = "application/json"
+const (
+	CTJSON  = "application/json"
+	CTPlain = "plain/text"
+)
 
 // Register handler adds new user if one does not exist and opens a new session
-func (srv *server) Register(w http.ResponseWriter, r *http.Request) {
-	ct := r.Header.Get("Content-Type")
-	if ct != "" && ct != ctJSON {
+func (srv *Server) Count(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(session.CtxKeyUserID).(string)
+	if !ok {
+		http.Error(w, "request context is missing user ID", http.StatusInternalServerError)
+
+		return
+	}
+
+	defer r.Body.Close()
+
+	strDataType := r.URL.Query().Get("data_type")
+	if strDataType == "" {
+		http.Error(w, "data_type parameter is required", http.StatusBadRequest)
+	}
+
+	dataType, err := strconv.Atoi(strDataType)
+	if err != nil || dataType >= model.KeyLimit {
+		http.Error(w, "bad data_type parameter", http.StatusBadRequest)
+	}
+
+	res, err := srv.dataStrg.Count(r.Context(), dataType, userID)
+	if err != nil {
+		http.Error(w,
+			fmt.Sprintf("failed to get data from storage: %v",
+				err.Error()),
+			http.StatusInternalServerError)
+	}
+
+	w.Header().Set("content-type", CTJSON)
+
+	w.Write([]byte(strconv.Itoa(res)))
+}
+
+// Register handler adds new user if one does not exist and opens a new session
+func (srv *Server) Register(w http.ResponseWriter, r *http.Request) {
+	ct := r.Header.Get("content-type")
+	if ct != "" && ct != CTJSON {
 		http.Error(w, fmt.Sprintf("unexpected content-type %v", ct), http.StatusBadRequest)
 
 		return
@@ -59,13 +97,23 @@ func (srv *server) Register(w http.ResponseWriter, r *http.Request) {
 			Name:    "Authorization",
 			Value:   token,
 			Expires: expiresAt,
+			Path:    "/v1",
 		})
+
+	http.SetCookie(w,
+		&http.Cookie{
+			Name:    "UserID",
+			Value:   userID,
+			Expires: expiresAt,
+			Path:    "/v1",
+		})
+
 }
 
 // Register handler adds a new user if one does not exist and opens a new session
-func (srv *server) Login(w http.ResponseWriter, r *http.Request) {
-	ct := r.Header.Get("Content-Type")
-	if ct != "" && strings.Compare(ct, ctJSON) == 0 {
+func (srv *Server) Login(w http.ResponseWriter, r *http.Request) {
+	ct := r.Header.Get("content-type")
+	if ct != "" && strings.Compare(ct, CTJSON) == 0 {
 		http.Error(w, fmt.Sprintf("unexpected content-type %v", ct), http.StatusBadRequest)
 
 		return
@@ -103,38 +151,171 @@ func (srv *server) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.SetCookie(w, &http.Cookie{Name: "Authorization", Value: token, Expires: expiresAt})
+	http.SetCookie(w,
+		&http.Cookie{
+			Name:    "Authorization",
+			Value:   token,
+			Expires: expiresAt,
+			Path:    "/v1",
+		})
+
+	http.SetCookie(w,
+		&http.Cookie{
+			Name:    "UserID",
+			Value:   userID,
+			Expires: expiresAt,
+			Path:    "/v1",
+		})
 }
 
-// Register GetData responds with JSON encoded array of ojects, 
+// GetData responds with JSON encoded array of ojects,
 // type depending on data_type query parameter.
-func (srv *server) GetData(w http.ResponseWriter, r *http.Request) {
+func (srv *Server) GetData(w http.ResponseWriter, r *http.Request) {
 	strDataType := r.URL.Query().Get("data_type")
 	if strDataType == "" {
 		http.Error(w, "data_type parameter is required", http.StatusBadRequest)
+
+		return
 	}
 
 	dataType, err := strconv.Atoi(strDataType)
 	if err != nil || dataType >= model.KeyLimit {
 		http.Error(w, "bad data_type parameter", http.StatusBadRequest)
+
+		return
 	}
 
-	data, err := srv.dataStrg.GetData(dataType)
+	data, err := srv.dataStrg.GetData(r.Context(), dataType)
 	if err != nil {
 		http.Error(w,
-			fmt.Sprintf("failed to get data fropm storage: %v",
+			fmt.Sprintf("failed to get data from storage: %v",
 				err.Error()),
 			http.StatusInternalServerError)
+
+		return
 	}
 
 	res, err := model.EncodeItemsJSON(data)
-	if err != nil{
+	if err != nil {
 		http.Error(w,
 			fmt.Sprintf("failed to encode data: %v",
 				err.Error()),
 			http.StatusInternalServerError)
+
+		return
 	}
 
-	w.Header().Set("content-type", ctJSON)
+	w.Header().Set("content-type", CTJSON)
 	w.Write(res)
+}
+
+// AddData adds new object to storage.
+func (srv *Server) AddData(w http.ResponseWriter, r *http.Request) {
+	strDataType := r.URL.Query().Get("data_type")
+	if strDataType == "" {
+		http.Error(w, "data_type parameter is required", http.StatusBadRequest)
+
+		return
+	}
+
+	dataType, err := strconv.Atoi(strDataType)
+	if err != nil || dataType >= model.KeyLimit {
+		http.Error(w, "bad data_type parameter", http.StatusBadRequest)
+		return
+	}
+
+	userID, ok := r.Context().Value(session.CtxKeyUserID).(string)
+	if !ok {
+		http.Error(w, "context is missing user ID", http.StatusInternalServerError)
+		
+		return
+	}
+
+	defer r.Body.Close()
+	msg, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w,
+			fmt.Sprintf("failed to read message: %v", err.Error()),
+			http.StatusBadRequest)
+
+		return
+	}
+
+	obj, err := model.DecodeItemJSON(dataType, msg)
+	if err != nil {
+		http.Error(w,
+			fmt.Sprintf("failed to decode JSON: %v", err.Error()),
+			http.StatusInternalServerError)
+
+		return
+	}
+
+	err = srv.dataStrg.AddData(r.Context(), dataType, userID, obj)
+	if err != nil {
+		http.Error(w,
+			fmt.Sprintf("failed to store data: %v",
+				err.Error()),
+			http.StatusInternalServerError)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("content-type", CTJSON)
+}
+
+// UpdateData updates new object to storage.
+func (srv *Server) UpdateData(w http.ResponseWriter, r *http.Request) {
+	strDataType := r.URL.Query().Get("data_type")
+	if strDataType == "" {
+		http.Error(w, "data_type parameter is required", http.StatusBadRequest)
+
+		return
+	}
+
+	dataType, err := strconv.Atoi(strDataType)
+	if err != nil || dataType >= model.KeyLimit {
+		http.Error(w, "bad data_type parameter", http.StatusBadRequest)
+
+		return
+	}
+
+	userID, ok := r.Context().Value(session.CtxKeyUserID).(string)
+	if !ok {
+		http.Error(w, "context is missing user ID", http.StatusInternalServerError)
+		
+		return
+	}
+
+	defer r.Body.Close()
+	msg, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w,
+			fmt.Sprintf("failed to read message: %v", err.Error()),
+			http.StatusBadRequest)
+
+		return
+	}
+
+	obj, err := model.DecodeItemJSON(dataType, msg)
+	if err != nil {
+		http.Error(w,
+			fmt.Sprintf("failed to decode JSON: %v", err.Error()),
+			http.StatusInternalServerError)
+
+		return
+	}
+
+	err = srv.dataStrg.UpdateData(r.Context(), dataType, userID, obj)
+	if err != nil {
+		http.Error(w,
+			fmt.Sprintf("failed to update data: %v",
+				err.Error()),
+			http.StatusInternalServerError)
+
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
+	w.Header().Set("content-type", CTJSON)
 }
