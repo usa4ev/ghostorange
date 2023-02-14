@@ -3,8 +3,8 @@ package adapter
 import (
 	"go.uber.org/zap"
 
-	"ghostorange/internal/app/adapter/httpp"
-	"ghostorange/internal/app/model"
+	"github.com/usa4ev/ghostorange/internal/app/adapter/httpp"
+	"github.com/usa4ev/ghostorange/internal/app/model"
 )
 
 type (

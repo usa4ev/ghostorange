@@ -12,10 +12,10 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/stdlib"
 
-	"ghostorange/internal/app/auth"
-	"ghostorange/internal/app/auth/session"
-	"ghostorange/internal/app/model"
-	"ghostorange/internal/pkg/encryption"
+	"github.com/usa4ev/ghostorange/internal/app/auth"
+	"github.com/usa4ev/ghostorange/internal/app/auth/session"
+	"github.com/usa4ev/ghostorange/internal/app/model"
+	"github.com/usa4ev/ghostorange/internal/pkg/encryption"
 )
 
 type (
@@ -521,7 +521,7 @@ func assertItem[T model.Item](data any) (T, error) {
 	return val, nil
 }
 
-func (db *Database)GetCardInfo(ctx context.Context, id, userID string) (model.ItemCard, error){
+func (db *Database) GetCardInfo(ctx context.Context, id, userID string) (model.ItemCard, error) {
 	query := `SELECT id, full_number, expires, 
 		cardholdername, cardholdersurename, 
 		cvvhash, name, comment FROM cards 
@@ -529,15 +529,15 @@ func (db *Database)GetCardInfo(ctx context.Context, id, userID string) (model.It
 
 	res := model.ItemCard{}
 	err := db.QueryRowContext(ctx, query, id, userID).
-		Scan(&res.ID, &res.Number,&res.Exp,
-			&res.CardholderName,&res.CardholderSurename,
-			&res.CVVHash, &res.Name,&res.Comment)
+		Scan(&res.ID, &res.Number, &res.Exp,
+			&res.CardholderName, &res.CardholderSurename,
+			&res.CVVHash, &res.Name, &res.Comment)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		// ToDo: replace with a public error
 		return res, fmt.Errorf("item not found")
 	} else if err != nil {
-		return  res, fmt.Errorf("failed to get card data from Database: %w", err)
+		return res, fmt.Errorf("failed to get card data from Database: %w", err)
 	}
 
 	return res, nil

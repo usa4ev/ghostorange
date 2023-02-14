@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"ghostorange/internal/app/auth/session"
+	"github.com/usa4ev/ghostorange/internal/app/auth/session"
 )
 
 // AuthMW returns middleware that enriches the request context with UserID
@@ -37,6 +37,3 @@ func AuthorisationMW(next http.Handler) http.Handler {
 		next.ServeHTTP(w, session.ReqWithSession(r, userID))
 	})
 }
-
-
-

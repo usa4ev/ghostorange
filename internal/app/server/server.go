@@ -8,10 +8,10 @@ import (
 	"github.com/go-chi/chi"
 	chimw "github.com/go-chi/chi/middleware"
 
-	"ghostorange/internal/app/auth"
-	"ghostorange/internal/app/router"
-	"ghostorange/internal/app/server/middleware"
-	"ghostorange/internal/app/storage"
+	"github.com/usa4ev/ghostorange/internal/app/auth"
+	"github.com/usa4ev/ghostorange/internal/app/router"
+	"github.com/usa4ev/ghostorange/internal/app/server/middleware"
+	"github.com/usa4ev/ghostorange/internal/app/storage"
 )
 
 type (
@@ -43,15 +43,15 @@ func (srv *Server) Handlers() []router.HandlerDesc {
 	return []router.HandlerDesc{
 		// POST: /users/register
 		{Method: "POST",
-			Path:    "/v1/users/register",
-			Handler: http.HandlerFunc(srv.Register),
+			Path:        "/v1/users/register",
+			Handler:     http.HandlerFunc(srv.Register),
 			Middlewares: nil,
 		},
 
 		// POST: /users/login
 		{Method: "POST",
-			Path:    "/v1/users/login",
-			Handler: http.HandlerFunc(srv.Login),
+			Path:        "/v1/users/login",
+			Handler:     http.HandlerFunc(srv.Login),
 			Middlewares: nil,
 		},
 

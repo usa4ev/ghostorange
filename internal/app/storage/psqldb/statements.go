@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"ghostorange/internal/app/model"
+	"github.com/usa4ev/ghostorange/internal/app/model"
 )
 
 func (db *Database) prepCountStmnt(dataType int) (*sql.Stmt, error) {
@@ -24,7 +24,7 @@ func (db *Database) prepCountStmnt(dataType int) (*sql.Stmt, error) {
 	}
 
 	query := fmt.Sprintf("SELECT COUNT(id) FROM %v WHERE user_id = $1",
-	 table)
+		table)
 
 	return db.Prepare(query)
 }
@@ -70,7 +70,7 @@ func selCards() string {
 		WHERE user_id = $1`
 }
 
-func insCredentials()string{
+func insCredentials() string {
 	return `INSERT INTO credentials(
 		id, user_id, ts, encrypted, name, comment
 		) 
@@ -83,18 +83,18 @@ func insCredentials()string{
 			comment=$5`
 }
 
-// argsCredentials returns slice of args required 
+// argsCredentials returns slice of args required
 // by query. See insCredentials.
-func argsCredentials(id, userID string, item model.ItemCredentials)([]any,error){
+func argsCredentials(id, userID string, item model.ItemCredentials) ([]any, error) {
 	encrypted, err := encryptCred(item.Credentials)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
-	if item.ID != ""{
+	if item.ID != "" {
 		id = item.ID
 	}
-	
+
 	return []any{
 		id,
 		userID,
@@ -104,7 +104,7 @@ func argsCredentials(id, userID string, item model.ItemCredentials)([]any,error)
 	}, nil
 }
 
-func insText()string{
+func insText() string {
 	return `INSERT INTO text(
 		id, user_id, ts, text, name, comment
 		) 
@@ -117,10 +117,10 @@ func insText()string{
 			comment=$5`
 }
 
-// argsText returns slice of args required 
+// argsText returns slice of args required
 // by query. See insText.
-func argsText(id, userID string, item model.ItemText)([]any,error){
-	if item.ID != ""{
+func argsText(id, userID string, item model.ItemText) ([]any, error) {
+	if item.ID != "" {
 		id = item.ID
 	}
 
@@ -133,7 +133,7 @@ func argsText(id, userID string, item model.ItemText)([]any,error){
 	}, nil
 }
 
-func insCard()string{
+func insCard() string {
 	return `INSERT INTO cards(
 		id, user_id, ts, number, full_number, cvvhash, expires, 
 		name, comment,
@@ -154,13 +154,13 @@ func insCard()string{
 
 }
 
-// argsCard returns slice of args required 
+// argsCard returns slice of args required
 // by query. See insCard.
-func argsCard(id, userID string, item model.ItemCard)([]any,error){
+func argsCard(id, userID string, item model.ItemCard) ([]any, error) {
 	// Replace 8 middle charachters with *
 	number := item.Number[:4] + strings.Repeat("*", 8) + item.Number[12:]
 
-	if item.ID != ""{
+	if item.ID != "" {
 		id = item.ID
 	}
 
@@ -178,7 +178,7 @@ func argsCard(id, userID string, item model.ItemCard)([]any,error){
 	}, nil
 }
 
-func insBinary()string{
+func insBinary() string {
 	return `INSERT INTO binarydata(
 		id, user_id, ts, data, extention, size, name, comment
 		) 
@@ -193,18 +193,18 @@ func insBinary()string{
 			comment=$7`
 }
 
-// argsBinary returns slice of args required 
+// argsBinary returns slice of args required
 // by query. See insBinary.
-func argsBinary(id, userID string, item model.ItemBinary)([]any,error){
-	data,err := base64.StdEncoding.DecodeString(item.Data)
-	if err !=nil{
-		return nil,err
+func argsBinary(id, userID string, item model.ItemBinary) ([]any, error) {
+	data, err := base64.StdEncoding.DecodeString(item.Data)
+	if err != nil {
+		return nil, err
 	}
 
-	if item.ID != ""{
+	if item.ID != "" {
 		id = item.ID
 	}
-	
+
 	return []any{
 		id,
 		userID,

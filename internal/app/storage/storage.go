@@ -3,8 +3,8 @@ package storage
 import (
 	"context"
 
-	"ghostorange/internal/app/model"
-	"ghostorange/internal/app/storage/psqldb"
+	"github.com/usa4ev/ghostorange/internal/app/model"
+	"github.com/usa4ev/ghostorange/internal/app/storage/psqldb"
 )
 
 type (

@@ -11,10 +11,10 @@ import (
 
 	"github.com/go-chi/chi"
 
-	"ghostorange/internal/app/auth"
-	"ghostorange/internal/app/auth/session"
-	"ghostorange/internal/app/model"
-	"ghostorange/internal/pkg/argon2hash"
+	"github.com/usa4ev/ghostorange/internal/app/auth"
+	"github.com/usa4ev/ghostorange/internal/app/auth/session"
+	"github.com/usa4ev/ghostorange/internal/app/model"
+	"github.com/usa4ev/ghostorange/internal/pkg/argon2hash"
 )
 
 const (
@@ -270,10 +270,10 @@ func (srv *Server) AddData(w http.ResponseWriter, r *http.Request) {
 // after verifying CVV code
 func (srv *Server) CardData(w http.ResponseWriter, r *http.Request) {
 	id := chi.URLParam(r, "id")
-	if id == ""{
+	if id == "" {
 		http.Error(w, "item id if missing in request URL", http.StatusBadRequest)
 
-		return 
+		return
 	}
 
 	userID, ok := r.Context().Value(session.CtxKeyUserID).(string)
@@ -284,7 +284,7 @@ func (srv *Server) CardData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	defer r.Body.Close()
-	
+
 	message, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w,
@@ -295,7 +295,7 @@ func (srv *Server) CardData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cvv := string(message) 
+	cvv := string(message)
 	data, err := srv.dataStrg.GetCardInfo(r.Context(), id, userID)
 	if err != nil {
 		http.Error(w,
@@ -305,15 +305,15 @@ func (srv *Server) CardData(w http.ResponseWriter, r *http.Request) {
 
 		return
 	}
-	
-	if ok,err := argon2hash.ComparePasswordAndHash(cvv,data.CVVHash);err != nil {
+
+	if ok, err := argon2hash.ComparePasswordAndHash(cvv, data.CVVHash); err != nil {
 		http.Error(w,
 			fmt.Sprintf("failed to validate CVV code: %v",
 				err.Error()),
 			http.StatusInternalServerError)
 
 		return
-	}else if !ok{
+	} else if !ok {
 		http.Error(w,
 			"passed CVV code is not valid",
 			http.StatusUnauthorized)

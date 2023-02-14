@@ -1,8 +1,10 @@
 CLI_SRC=./cmd/client/main.go
-SRV_SRC=./cmd/ghostorange/main.go
+SRV_SRC=./cmd/github.com/usa4ev/ghostorange/main.go
 CLI_BINARY_NAME=tuiGOrange
 SRV_BINARY_NAME=GOrangeServer
 BIN_PATH=./bin
+BUILDDATE=`date +%Y.%m.%d`
+LDFLAGS=-ldflags "-X 'github.com/usa4ev/ghostorange/internal/app/tui/appinfo.BuildDate=$(BUILDDATE)'"
 
  # Build server
 build-srv-linux:
@@ -16,13 +18,13 @@ build-srv-windows:
 
 # Build client
 build-tui-windows:
-	GOARCH=amd64 GOOS=windows go build -o $(BIN_PATH)/${CLI_BINARY_NAME}-windows $(CLI_SRC)
+	GOARCH=amd64 GOOS=windows go build $(LDFLAGS) -o $(BIN_PATH)/${CLI_BINARY_NAME}-windows $(CLI_SRC)
 
 build-tui-darwin:
-	GOARCH=amd64 GOOS=darwin go build -o $(BIN_PATH)/${CLI_BINARY_NAME}-darwin $(CLI_SRC)
+	GOARCH=amd64 GOOS=darwin go build $(LDFLAGS) -o $(BIN_PATH)/${CLI_BINARY_NAME}-darwin $(CLI_SRC)
 
 build-tui-linux:
-	GOARCH=amd64 GOOS=linux go build -o $(BIN_PATH)/${CLI_BINARY_NAME}-linux $(CLI_SRC)
+	GOARCH=amd64 GOOS=linux go build $(LDFLAGS) -o $(BIN_PATH)/${CLI_BINARY_NAME}-linux $(CLI_SRC) 
 
 # Run server
 run-srv-linux: build-srv-linux

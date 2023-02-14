@@ -11,8 +11,8 @@ import (
 	"go.uber.org/zap"
 	"golang.org/x/net/publicsuffix"
 
-	"ghostorange/internal/app/model"
-	"ghostorange/internal/app/server"
+	"github.com/usa4ev/ghostorange/internal/app/model"
+	"github.com/usa4ev/ghostorange/internal/app/server"
 )
 
 type (

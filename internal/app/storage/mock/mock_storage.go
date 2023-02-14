@@ -6,7 +6,7 @@ package mockstorage
 
 import (
 	context "context"
-	model "ghostorange/internal/app/model"
+	model "github.com/usa4ev/ghostorange/internal/app/model"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
