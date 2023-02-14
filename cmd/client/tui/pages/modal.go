@@ -5,10 +5,10 @@ import (
 	"github.com/rivo/tview"
 )
 
-// ShowError generates a new modal window with given message
+// ShowMessage generates a new modal window with given message
 // and sets the only button to switch focus to a page
 // named in pageKey value.
-func (c *Constructor) ShowError(message string, pageKey string) {
+func (c *Constructor) ShowMessage(message string, pageKey string) {
 	modal := tview.NewModal().
 		SetText(message).
 		AddButtons([]string{"OK"}).
@@ -25,17 +25,16 @@ func (c *Constructor) ShowError(message string, pageKey string) {
 // ShowInput generates a new page with input field
 func (c *Constructor) ShowInput(message string, result *string, pageKey string) {
 	input := tview.NewInputField().
-	SetPlaceholder("file path").
-	SetDoneFunc(func(key tcell.Key) {
-		if key == tcell.KeyEnter{
-			c.Pages.SwitchToPage(KeyInput)
-		}
-	}).
-	SetChangedFunc(func(text string) {
-		*result = text
-	}).
+		SetPlaceholder("file path").
+		SetDoneFunc(func(key tcell.Key) {
+			if key == tcell.KeyEnter {
+				c.Pages.SwitchToPage(KeyInput)
+			}
+		}).
+		SetChangedFunc(func(text string) {
+			*result = text
+		}).
 		SetTitle(message)
-		
 
 	c.Pages.AddPage(KeyInput, input, false, false)
 	c.Pages.SwitchToPage(KeyInput)

@@ -1,6 +1,11 @@
 package pages
 
 import (
+	"encoding/base64"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/rivo/tview"
@@ -8,92 +13,74 @@ import (
 	"ghostorange/internal/app/model"
 )
 
-func (c *Constructor) binaryList() *tview.Flex {
-	flex := tview.NewFlex()
-	list := tview.NewList()
-	lflex := tview.NewFlex().
-		SetDirection(tview.FlexRow)
+func (c *Constructor) binaryList() listGenerator {
 	rflex := tview.NewFlex().
 		SetDirection(tview.FlexRow)
 	tFName := tview.NewTextView()
 	tFSize := tview.NewTextView()
 	tComment := tview.NewTextView()
-
 	tComment.SetTitle("Comment: ")
 
-	lflex.AddItem(list, 0, 1, true).
-		AddItem(tview.NewForm().
-			AddButton("Add", func() {
-				c.forgetCurItem()
-				c.Pages.SwitchToPage(KeyFormBinary)
-			}).
-			AddButton("Edit", func() {
-				if val, ok := c.CurItem.(model.ItemBinary); ok && val.ID != "" {
-					c.Pages.SwitchToPage(KeyFormBinary)
-				}
-			}), 0, 1, false)
+	buttons := make(map[string]func())
 
-	rflex.AddItem(tFName, 1, 0, false).
-		AddItem(tFSize, 1, 0, false).
-		AddItem(tComment, 1, 0, false).
-		AddItem(tview.NewButton("Save to file").
-			SetSelectedFunc(func() {
-				item, ok := c.CurItem.(model.ItemBinary)
-				if !ok {
-					return
-				}
-				if err := c.saveFile(item); err != nil {
-					c.ShowError(err.Error(), KeyBinary)
-				}
-			}), 1, 0, false).
-		SetBlurFunc(c.forgetCurItem)
+	buttons["Add"] = func() {
+		c.CurItem = model.ItemBinary{}
+		c.Build(KeyFormLoadBinary)
+		c.Pages.SwitchToPage(KeyFormLoadBinary)
+	}
 
-	flex.AddItem(lflex, 0, 1, true).
-		AddItem(rflex, 0, 1, false)
+	buttons["Edit"] = func() {
+		if val, ok := c.CurItem.(model.ItemBinary); ok && val.ID != "" {
+			c.Pages.SwitchToPage(KeyFormLoadBinary)
+		}
+	}
 
 	var data []model.ItemBinary
 
-	list.SetFocusFunc(func() {
-		list.Clear()
-
-		var err error
-
-		val, err := c.Adapter.GetData(model.KeyBinary)
-		if err != nil {
-			// ToDo: handle error
-			c.Logger.Errorf("failed to get data: %v", err)
-			return
-		}
-
+	addItemF := func(val any, list *tview.List) error {
 		var ok bool
 		data, ok = val.([]model.ItemBinary)
 		if !ok {
-			// ToDo: handle error
-			return
+			return fmt.Errorf("got unexpected data type; expected: %v",
+				model.GetItemTitle(model.KeyBinary))
 		}
 
 		for _, item := range data {
 			list.AddItem(item.Name, item.Comment, '0', nil)
 		}
 
-		c.Logger.Debugf("Binvary list set: %v", data)
+		return nil
+	}
 
-		list.SetSelectedFunc(
-			func(index int, name string, second_name string, shortcut rune) {
+	selectedF := func(index int, name string, second_name string, shortcut rune) {
 
-				item := data[index]
-				tFName.Clear().SetText(item.Name + "." + item.Extention)
-				tFSize.Clear().SetText(strconv.Itoa(item.Size) + " byte")
-				tComment.Clear().SetText(item.Comment)
+		item := data[index]
+		tFName.Clear().SetText(item.Name + "." + item.Extention)
+		tFSize.Clear().SetText(strconv.Itoa(item.Size) + " byte")
+		tComment.Clear().SetText(item.Comment)
 
-				c.CurItem = item
+		c.CurItem = item
 
-				c.Logger.Debugf("CurItem set: %v", c.CurItem)
-			})
+		c.Logger.Debugf("CurItem set: %v", c.CurItem)
+	}
 
-	})
+	rflex.AddItem(tFName, 1, 0, false).
+		AddItem(tFSize, 1, 0, false).
+		AddItem(tComment, 1, 0, false).
+		AddItem(tview.NewButton("Save to file").
+			SetSelectedFunc(func() {
+				c.Build(KeyFormSaveBinary)
+				c.Pages.SwitchToPage(KeyFormSaveBinary)
+			}), 1, 0, false).
+		SetBlurFunc(c.forgetCurItem)
 
-	return flex
+	return listGenerator{
+		btns:         buttons,
+		detail:       rflex,
+		Constructor:  c,
+		addItemFunc:  addItemF,
+		selectedFunc: selectedF,
+	}
 }
 
 func (c *Constructor) binaryForm() *tview.Form {
@@ -106,26 +93,36 @@ func (c *Constructor) binaryForm() *tview.Form {
 			item = val
 		}
 		c.Logger.Debugf("filling the form using item %v", item)
-
 		form.AddTextView("ID", item.ID, 50, 1, false, false).
 			AddTextView("Size", strconv.Itoa(item.Size)+" byte", 50, 1, false, false).
 			AddInputField("Name", item.Name, 25, nil, func(text string) {
 				item.Name = text
 			}).
-			AddButton("Update from file", func() {
-				//ToDo: error handling
-				c.loadFile()
+			AddInputField("Comment", item.Comment, 25, nil, func(text string) {
+				item.Comment = text
+			}).
+			AddButton("Load from file", func() {
+				c.Build(KeyFormLoadBinary)
 			}).
 			AddButton("Save", func() {
-				//ToDo: error handling
+				// Send item to the server
+				var err error
 				if item.ID == "" {
-					c.Adapter.AddData(model.KeyBinary, item)
+					err = c.Adapter.AddData(model.KeyBinary, item)
 				} else {
-					c.Adapter.UpdateData(model.KeyBinary, item)
-					c.CurItem = item
+					err = c.Adapter.UpdateData(model.KeyBinary, item)
 				}
-				form.Clear(true)
-				c.Pages.SwitchToPage(KeyBinary)
+
+				if err != nil {
+					c.ShowMessage(fmt.Sprintf("Failed to save data:\n%v", err.Error()),
+						KeyFormBinary)
+					return
+				}
+
+				c.Build(KeyBinary)
+				c.ShowMessage("Success!",
+					KeyBinary)
+				defer form.Clear(true)
 			}).
 			AddButton("Cancel", func() {
 				form.Clear(true)
@@ -134,6 +131,102 @@ func (c *Constructor) binaryForm() *tview.Form {
 	})
 
 	return form
+}
+
+func (c *Constructor) binaryLoadForm() *tview.Form {
+	var path string
+
+	item, ok := c.CurItem.(model.ItemBinary)
+	if !ok {
+		item = model.ItemBinary{}
+	}
+
+	return tview.NewForm().
+		AddInputField("Comment", path, 25, nil, func(text string) {
+			item.Comment = text
+		}).
+		AddInputField("Path", path, 25, nil, func(text string) {
+			path = text
+		}).
+		AddButton("Load", func() {
+			data, err := ioutil.ReadFile(path)
+			if err != nil {
+				c.ShowMessage(fmt.Sprintf("Failed to read file:\n%v", err.Error()),
+					KeyFormLoadBinary)
+				return
+			}
+
+			st, err := os.Stat(path)
+			if err != nil {
+				c.ShowMessage(fmt.Sprintf("Failed to access file:\n%v", err.Error()),
+					KeyFormLoadBinary)
+				return
+			}
+
+			item.Data = base64.StdEncoding.EncodeToString(data)
+			item.Name = filepath.Base(path)
+			item.Extention = filepath.Ext(path)
+			item.Size = int(st.Size())
+
+			c.CurItem = item
+
+			c.Build(KeyFormBinary)
+			c.Pages.SwitchToPage(KeyFormBinary)
+		}).
+		AddButton("Cancel", func() {
+			path = ""
+			c.Pages.SwitchToPage(KeyBinary)
+		})
+
+}
+
+func (c *Constructor) binarySaveForm() *tview.Form {
+	var path string
+
+	return tview.NewForm().
+		AddInputField("Path", path, 25, nil, func(text string) {
+			path = text
+		}).
+		AddButton("Save", func() {
+			item, ok := c.CurItem.(model.ItemBinary)
+			if !ok {
+				return
+			}
+
+			if fileExists(path) {
+				// ToDo: show modal dialogue
+			}
+
+			data, err := base64.StdEncoding.DecodeString(item.Data)
+			if err != nil {
+				c.ShowMessage(fmt.Sprintf("Failed to decode data:\n%v", err.Error()),
+					KeyFormLoadBinary)
+					return
+			}
+
+			if err := ioutil.WriteFile(path, data, 0644); err != nil {
+				c.ShowMessage(fmt.Sprintf("Failed to save file:\n%v", err.Error()),
+					KeyFormLoadBinary)
+					return
+			}
+
+			c.Build(KeyBinary)
+			c.Pages.SwitchToPage(KeyBinary)
+		}).
+		AddButton("Cancel", func() {
+			path = ""
+			c.Pages.SwitchToPage(KeyBinary)
+		})
+
+}
+
+func fileExists(fp string) bool {
+	// Check if file already exists
+	if _, err := os.Stat(fp); err == nil {
+		return true
+	}
+
+	return false
 }
 
 func (c *Constructor) saveFile(item model.ItemBinary) error {

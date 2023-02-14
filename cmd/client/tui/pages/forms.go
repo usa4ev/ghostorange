@@ -21,8 +21,11 @@ const (
 	KeyFormText         = "text form"
 	KeyCards            = "cards"
 	KeyFormCards        = "cards form"
+	KeyFormCVV          = "cvv input form"
 	KeyBinary           = "binary"
 	KeyFormBinary       = "binary form"
+	KeyFormLoadBinary   = "binary load form"
+	KeyFormSaveBinary   = "binary save form"
 )
 
 type (
@@ -62,22 +65,22 @@ func (c *Constructor) buildPrimitive(key string) tview.Primitive {
 		return c.regForm()
 	case KeyMenu:
 		return c.menu()
-	case KeyCredentials:
+	case KeyCards, KeyBinary, KeyText, KeyCredentials:
 		return c.BuildList(key)
 	case KeyFormCredentials:
 		return c.credForm()
-	case KeyText:
-		return c.BuildList(key)
 	case KeyFormText:
 		return c.textForm()
-	case KeyCards:
-		return c.BuildList(key)
 	case KeyFormCards:
 		return c.cardsForm()
-	case KeyBinary:
-		return c.BuildList(key)
+	case KeyFormCVV:
+		return c.cardsCVVForm()
 	case KeyFormBinary:
 		return c.binaryForm()
+	case KeyFormLoadBinary:
+		return c.binaryLoadForm()
+	case KeyFormSaveBinary:
+		return c.binarySaveForm()
 	default:
 		return nil
 	}
@@ -107,6 +110,10 @@ func (c *Constructor) newListGenerator(key string) listGenerator {
 		lg = c.cardsList()
 	case KeyCredentials:
 		lg = c.credList()
+	case KeyBinary:
+		lg = c.binaryList()
+	case KeyText:
+		lg = c.textList()
 	}
 
 	lg.key = key
@@ -125,6 +132,7 @@ func (lg listGenerator) build() tview.Primitive {
 		AddItem(tview.NewButton("Back").
 			SetSelectedFunc(func() {
 				lg.forgetCurItem()
+				lg.Build(KeyMenu)
 				lg.Pages.SwitchToPage(KeyMenu)
 			}), 0, 1, false)
 
@@ -136,13 +144,14 @@ func (lg listGenerator) build() tview.Primitive {
 	// Fill the list
 	val, err := lg.Adapter.GetData(listDataType(lg.key))
 	if err != nil {
-		lg.ShowError(err.Error(), KeyMenu)
+		lg.ShowMessage(err.Error(), KeyMenu)
 		lg.Logger.Errorf("failed to get data: %v", err)
 		return nil
 	}
 
+	// Add list rows
 	if err = lg.addItemFunc(val, list); err != nil {
-		lg.ShowError(err.Error(), KeyMenu)
+		lg.ShowMessage(err.Error(), KeyMenu)
 	}
 
 	list.SetSelectedFunc(lg.selectedFunc)

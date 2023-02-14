@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 
 	"ghostorange/internal/app/auth/session"
@@ -13,11 +14,12 @@ func AuthorisationMW(next http.Handler) http.Handler {
 		if err != nil {
 			if err == http.ErrNoCookie {
 				w.WriteHeader(http.StatusUnauthorized)
-
+				fmt.Fprint(w, "No Authorization cookie set")
 				return
 			}
 
 			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprintf(w, "Authorization failure: %v", err)
 
 			return
 		}
@@ -28,7 +30,7 @@ func AuthorisationMW(next http.Handler) http.Handler {
 
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
-
+			fmt.Fprintf(w, "Token verification failure: %v", err)
 			return
 		}
 

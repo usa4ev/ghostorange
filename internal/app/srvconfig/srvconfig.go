@@ -55,6 +55,9 @@ func fillCfg(configs []*Config) *Config {
 		if pCfg.dbDSN != "" {
 			cfg.dbDSN = pCfg.dbDSN
 		}
+		if pCfg.sessionLifeTime != time.Duration(0) {
+			cfg.sessionLifeTime = pCfg.sessionLifeTime
+		}
 	}
 
 	return cfg.setDefaults()
@@ -125,7 +128,7 @@ func fromFile(filePath string) *Config {
 
 	pc.dbDSN = fileData.DatabaseDsn
 	pc.srvAddr = fileData.ServerAddress
-	pc.sessionLifeTime = time.Minute * time.Duration(fileData.SessionLifeTime)
+	pc.sessionLifeTime = time.Duration(fileData.SessionLifeTime)
 
 	return &pc
 }

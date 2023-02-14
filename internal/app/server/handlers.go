@@ -9,9 +9,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-chi/chi"
+
 	"ghostorange/internal/app/auth"
 	"ghostorange/internal/app/auth/session"
 	"ghostorange/internal/app/model"
+	"ghostorange/internal/pkg/argon2hash"
 )
 
 const (
@@ -55,9 +58,9 @@ func (srv *Server) Count(w http.ResponseWriter, r *http.Request) {
 
 // Register handler adds new user if one does not exist and opens a new session
 func (srv *Server) Register(w http.ResponseWriter, r *http.Request) {
-	ct := r.Header.Get("content-type")
-	if ct != "" && ct != CTJSON {
-		http.Error(w, fmt.Sprintf("unexpected content-type %v", ct), http.StatusBadRequest)
+	ct := r.Header.Get("Content-Type")
+	if ct == "" || strings.Compare(ct, CTJSON) != 0 {
+		http.Error(w, fmt.Sprintf("unexpected Content-Type %v", ct), http.StatusBadRequest)
 
 		return
 	}
@@ -110,11 +113,11 @@ func (srv *Server) Register(w http.ResponseWriter, r *http.Request) {
 
 }
 
-// Register handler adds a new user if one does not exist and opens a new session
+// Login handler opens a new session after verifying username and password
 func (srv *Server) Login(w http.ResponseWriter, r *http.Request) {
-	ct := r.Header.Get("content-type")
-	if ct != "" && strings.Compare(ct, CTJSON) == 0 {
-		http.Error(w, fmt.Sprintf("unexpected content-type %v", ct), http.StatusBadRequest)
+	ct := r.Header.Get("Content-Type")
+	if ct == "" || strings.Compare(ct, CTJSON) != 0 {
+		http.Error(w, fmt.Sprintf("unexpected Content-Type %v", ct), http.StatusBadRequest)
 
 		return
 	}
@@ -168,7 +171,7 @@ func (srv *Server) Login(w http.ResponseWriter, r *http.Request) {
 		})
 }
 
-// GetData responds with JSON encoded array of ojects,
+// GetData responds with JSON encoded array of objects,
 // type depending on data_type query parameter.
 func (srv *Server) GetData(w http.ResponseWriter, r *http.Request) {
 	strDataType := r.URL.Query().Get("data_type")
@@ -205,7 +208,7 @@ func (srv *Server) GetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("content-type", CTJSON)
+	w.Header().Set("Content-Type", CTJSON)
 	w.Write(res)
 }
 
@@ -227,7 +230,7 @@ func (srv *Server) AddData(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(session.CtxKeyUserID).(string)
 	if !ok {
 		http.Error(w, "context is missing user ID", http.StatusInternalServerError)
-		
+
 		return
 	}
 
@@ -261,61 +264,73 @@ func (srv *Server) AddData(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	w.Header().Set("content-type", CTJSON)
 }
 
-// UpdateData updates new object to storage.
-func (srv *Server) UpdateData(w http.ResponseWriter, r *http.Request) {
-	strDataType := r.URL.Query().Get("data_type")
-	if strDataType == "" {
-		http.Error(w, "data_type parameter is required", http.StatusBadRequest)
+// GetData responds with JSON encoded model.ItemCard object
+// after verifying CVV code
+func (srv *Server) CardData(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == ""{
+		http.Error(w, "item id if missing in request URL", http.StatusBadRequest)
 
-		return
-	}
-
-	dataType, err := strconv.Atoi(strDataType)
-	if err != nil || dataType >= model.KeyLimit {
-		http.Error(w, "bad data_type parameter", http.StatusBadRequest)
-
-		return
+		return 
 	}
 
 	userID, ok := r.Context().Value(session.CtxKeyUserID).(string)
 	if !ok {
 		http.Error(w, "context is missing user ID", http.StatusInternalServerError)
-		
+
 		return
 	}
 
 	defer r.Body.Close()
-	msg, err := io.ReadAll(r.Body)
+	
+	message, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w,
-			fmt.Sprintf("failed to read message: %v", err.Error()),
-			http.StatusBadRequest)
-
-		return
-	}
-
-	obj, err := model.DecodeItemJSON(dataType, msg)
-	if err != nil {
-		http.Error(w,
-			fmt.Sprintf("failed to decode JSON: %v", err.Error()),
-			http.StatusInternalServerError)
-
-		return
-	}
-
-	err = srv.dataStrg.UpdateData(r.Context(), dataType, userID, obj)
-	if err != nil {
-		http.Error(w,
-			fmt.Sprintf("failed to update data: %v",
+			fmt.Sprintf("failed to read request body: %v",
 				err.Error()),
 			http.StatusInternalServerError)
 
 		return
 	}
 
-	w.WriteHeader(http.StatusAccepted)
-	w.Header().Set("content-type", CTJSON)
+	cvv := string(message) 
+	data, err := srv.dataStrg.GetCardInfo(r.Context(), id, userID)
+	if err != nil {
+		http.Error(w,
+			fmt.Sprintf("failed to get data from storage: %v",
+				err.Error()),
+			http.StatusInternalServerError)
+
+		return
+	}
+	
+	if ok,err := argon2hash.ComparePasswordAndHash(cvv,data.CVVHash);err != nil {
+		http.Error(w,
+			fmt.Sprintf("failed to validate CVV code: %v",
+				err.Error()),
+			http.StatusInternalServerError)
+
+		return
+	}else if !ok{
+		http.Error(w,
+			"passed CVV code is not valid",
+			http.StatusUnauthorized)
+
+		return
+	}
+
+	res, err := model.EncodeItemsJSON(data)
+	if err != nil {
+		http.Error(w,
+			fmt.Sprintf("failed to encode data: %v",
+				err.Error()),
+			http.StatusInternalServerError)
+
+		return
+	}
+
+	w.Header().Set("Content-Type", CTJSON)
+	w.Write(res)
 }

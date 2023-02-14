@@ -33,7 +33,6 @@ type (
 	// stored data items
 	ItemCredentials struct {
 		ID          string      `json:"id"`
-		User		string		`json:"user"`
 		Credentials Credentials `json:"credentials"`
 		Name        string      `json:"name"`
 		Comment     string      `json:"comment"`
@@ -41,7 +40,6 @@ type (
 
 	ItemText struct {
 		ID      string `json:"id"`
-		User		string		`json:"user"`
 		Text    string `json:"text"`
 		Name    string `json:"name"`
 		Comment string `json:"comment"`
@@ -49,7 +47,6 @@ type (
 
 	ItemBinary struct {
 		ID        string `json:"id"`
-		User		string		`json:"user"`
 		Size      int    `json:"size"`
 		Extention string `json:"extention"`
 		Data      string `json:"data"`
@@ -59,7 +56,6 @@ type (
 
 	ItemCard struct {
 		ID                 string    `json:"id"`
-		User		string		`json:"user"`
 		Number             string    `json:"number"`
 		Exp                time.Time `json:"expiration_date"`
 		CardholderName     string    `json:"holder_name"`
@@ -154,5 +150,3 @@ func decodeItemJSON[T Item](data []byte) (T, error) {
 
 	return res, err
 }
-
-

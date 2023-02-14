@@ -21,7 +21,6 @@ func setConfigOptions(opts []configOption) *configOptions {
 			"SERVER_ADDRESS":    os.Getenv("SERVER_ADDRESS"),
 			"DATABASE_DSN":      os.Getenv("DATABASE_DSN"),
 			"SESSION_LIFETIME":  os.Getenv("SESSION_LIFETIME"),
-			"MOCK_STORAGE":      os.Getenv("MOCK_STORAGE"),
 			"CONFIG":            os.Getenv("CONFIG"),
 		},
 	}

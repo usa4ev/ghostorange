@@ -7,16 +7,19 @@ import (
 	"github.com/rivo/tview"
 
 	"ghostorange/internal/app/model"
+	"ghostorange/internal/pkg/argon2hash"
 )
 
 func (c *Constructor) cardsList() listGenerator {
 	rflex := tview.NewFlex().
 		SetDirection(tview.FlexRow)
+	tName := tview.NewTextView()
 	tCardNo := tview.NewTextView()
 	tCardHolder := tview.NewTextView()
 	tExpires := tview.NewTextView()
 	tComment := tview.NewTextView()
 
+	tName.SetTitle("Name: ")
 	tCardNo.SetTitle("Card no: ")
 	tCardHolder.SetTitle("Cardholder: ")
 	tExpires.SetTitle("Expires: ")
@@ -68,25 +71,30 @@ func (c *Constructor) cardsList() listGenerator {
 		c.Logger.Debugf("CurItem set: %v", c.CurItem)
 	}
 
-	rflex.AddItem(tCardNo, 1, 0, false).
+	rflex.AddItem(tName, 1, 0, false).
+		AddItem(tCardNo, 1, 0, false).
 		AddItem(tview.NewFlex().
 			AddItem(tCardHolder, 0, 1, false).
 			AddItem(tExpires, 0, 1, false), 1, 0, false).
 		AddItem(tComment, 1, 0, false).
-		SetBlurFunc(c.forgetCurItem)
-
+		AddItem(tview.NewButton("Show more").
+			SetSelectedFunc(func() {
+				c.Build(KeyFormCVV)
+				c.Pages.SwitchToPage(KeyFormCVV)
+			}), 1, 0, false)
 
 	return listGenerator{
-		btns: buttons,
-		detail: rflex,
-		Constructor: c,
-		addItemFunc: addItemF,
+		btns:         buttons,
+		detail:       rflex,
+		Constructor:  c,
+		addItemFunc:  addItemF,
 		selectedFunc: selectedF,
 	}
 }
 
 func (c *Constructor) cardsForm() *tview.Form {
 	form := tview.NewForm()
+	var cvv string
 
 	form.SetFocusFunc(func() {
 		item := model.ItemCard{}
@@ -117,15 +125,37 @@ func (c *Constructor) cardsForm() *tview.Form {
 
 				item.Exp = exp
 			}).
+			AddInputField("CVV", cvv, 25, nil, func(text string) {
+				cvv = text
+			}).
 			AddTextArea("Comment", item.Comment, 25, 3, 0, func(text string) {
 				item.Comment = text
 			}).
 			AddButton("Save", func() {
-				//ToDo: error handling
+				// Hash CVV code
+				hash, err := argon2hash.GenerateFromPassword(cvv,
+					argon2hash.DefaultParams())
+				if err != nil {
+					c.ShowMessage(err.Error(), KeyFormCards)
+					return
+				}
+
+				item.CVVHash = hash
+
+				c.Logger.Debugf("attemtimg to store card item: %v", item)
+
 				if item.ID == "" {
-					c.Adapter.AddData(model.KeyCards, item)
+
+					// Add data
+					if err := c.Adapter.AddData(model.KeyCards, item); err != nil {
+						c.ShowMessage(err.Error(), KeyFormCards)
+						return
+					}
 				} else {
-					c.Adapter.UpdateData(model.KeyCards, item)
+					if err := c.Adapter.UpdateData(model.KeyCards, item); err != nil{
+						c.ShowMessage(err.Error(), KeyFormCards)
+						return
+					}
 					c.CurItem = item
 				}
 				form.Clear(true)
@@ -133,9 +163,42 @@ func (c *Constructor) cardsForm() *tview.Form {
 			}).
 			AddButton("Cancel", func() {
 				form.Clear(true)
+				c.Build(KeyCards)
 				c.Pages.SwitchToPage(KeyCards)
 			})
 	})
 
 	return form
+}
+
+func(c *Constructor) cardsCVVForm() *tview.Form {
+	var cvv string
+	return tview.NewForm().AddInputField("CVV",cvv,3,nil,func(text string) {
+		cvv = text
+	}).
+	AddButton("Back",func() {
+		c.Pages.SwitchToPage(KeyCards)
+	}).
+	AddButton("Done",func() {
+		if len(cvv)!=3{
+			c.ShowMessage("CVV code must be 3 charachters long",KeyFormCVV)
+			return
+		}
+
+		item := c.CurItem.(model.ItemCard)
+
+		c.Logger.Debugf("call GetCard() with id=%v; cvv=%v",item.ID,cvv)
+
+		var err error
+		item, err = c.Adapter.GetCard(item.ID, cvv)
+		if err != nil{
+			c.ShowMessage(err.Error(),KeyFormCVV)
+			return
+		}
+		
+		c.CurItem = item
+
+		c.Build(KeyFormCards)
+		c.Pages.SwitchToPage(KeyFormCards)
+	})
 }

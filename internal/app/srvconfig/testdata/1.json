@@ -1,5 +1,5 @@
 {
   "server_address": "111",
   "database_dsn": "111",
-  "session_lifetime": "10"
+  "session_lifetime": 111
 }

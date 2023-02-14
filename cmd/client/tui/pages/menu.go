@@ -19,7 +19,9 @@ func (c *Constructor) menu() *tview.List {
 
 		n, err := c.Adapter.Count(i)
 		if err != nil {
-			c.ShowError(err.Error(), KeyMenu)
+			c.ShowMessage(err.Error(), KeyMenu)
+			c.Logger.Errorf("failed to count items: %v",
+				err)
 		}
 
 		title := model.GetItemTitle(i)

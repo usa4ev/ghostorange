@@ -1,28 +1,50 @@
-CLI_BINARY_NAME=tuiGhostOrange
-SRV_BINARY_NAME=GhostOrangeServer
+CLI_SRC=./cmd/client/main.go
+SRV_SRC=./cmd/ghostorange/main.go
+CLI_BINARY_NAME=tuiGOrange
+SRV_BINARY_NAME=GOrangeServer
+BIN_PATH=./bin
 
-build:
-# Client
- GOARCH=amd64 GOOS=darwin go build -o ${CLI_BINARY_NAME}-darwin ./ghostorange/cmd/client/main.go
- GOARCH=amd64 GOOS=linux go build -o ${CLI_BINARY_NAME}-linux ./ghostorange/cmd/client/main.go
- GOARCH=amd64 GOOS=windows go build -o ${CLI_BINARY_NAME}-windows ./ghostorange/cmd/client/main.go
+ # Build server
+build-srv-linux:
+	GOARCH=amd64 GOOS=linux go build -o $(BIN_PATH)/${SRV_BINARY_NAME}-linux $(SRV_SRC)
 
-#  # Server
-#  GOARCH=amd64 GOOS=darwin go build -o ${SRV_BINARY_NAME}-darwin ./ghostorange/cmd/client/main.go
-#  GOARCH=amd64 GOOS=linux go build -o ${SRV_BINARY_NAME}-linux ./ghostorange/cmd/client/main.go
-#  GOARCH=amd64 GOOS=windows go build -o ${SRV_BINARY_NAME}-windows ./cmd/ghostorange/main.go/main.go
+build-srv-darwin:
+	GOARCH=amd64 GOOS=darwin go build -o $(BIN_PATH)/${SRV_BINARY_NAME}-darwin $(SRV_SRC)
 
-run: build
-	./${CLI_BINARY_NAME}
-# build
-# ./${SRV_BINARY_NAME}
+build-srv-windows:
+	GOARCH=amd64 GOOS=windows go build -o $(BIN_PATH)/${SRV_BINARY_NAME}-windows $(SRV_SRC)
 
-clean:
-	go clean
-	rm ${CLI_BINARY_NAME}-darwin
-	rm ${CLI_BINARY_NAME}-linux
-	rm ${CLI_BINARY_NAME}-windows
+# Build client
+build-tui-windows:
+	GOARCH=amd64 GOOS=windows go build -o $(BIN_PATH)/${CLI_BINARY_NAME}-windows $(CLI_SRC)
 
-# rm ${SRV_BINARY_NAME}-darwin
-#  rm ${SRV_BINARY_NAME}-linux
-#  rm ${SRV_BINARY_NAME}-windows
+build-tui-darwin:
+	GOARCH=amd64 GOOS=darwin go build -o $(BIN_PATH)/${CLI_BINARY_NAME}-darwin $(CLI_SRC)
+
+build-tui-linux:
+	GOARCH=amd64 GOOS=linux go build -o $(BIN_PATH)/${CLI_BINARY_NAME}-linux $(CLI_SRC)
+
+# Run server
+run-srv-linux: build-srv-linux
+	$(BIN_PATH)/${SRV_BINARY_NAME}-linux -c ./configs/srv.json
+
+run-srv-darwin: build-srv-darwin
+	$(BIN_PATH)/${SRV_BINARY_NAME}-darwin -c ./configs/srv.json
+
+run-srv-windows: build-srv-windows
+	$(BIN_PATH)/${SRV_BINARY_NAME}-windows -c ./configs/srv.json
+
+# Run client
+run-tui-linux: build-tui-linux
+	$(BIN_PATH)/${CLI_BINARY_NAME}-linux -a localhost:8080 -l log.txt
+
+run-tui-darwin: build-tui-darwin
+	$(BIN_PATH)/${CLI_BINARY_NAME}-darwin -a localhost:8080 -l log.txt
+
+run-tui-windows: build-tui-windows
+	$(BIN_PATH)/${CLI_BINARY_NAME}-windows -a localhost:8080 -l log.txt
+
+	
+test:
+	go test -v "./..."
+

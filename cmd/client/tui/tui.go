@@ -31,16 +31,9 @@ func New(adapter adapter.Adapter, logger *zap.SugaredLogger) *Application {
 	builder.Build(pages.KeyRegistrationForm)
 	builder.Build(pages.KeyMenu)
 
-	// builder.Build(pages.KeyCredentials)
 	builder.Build(pages.KeyFormCredentials)
-
-	// builder.Build(pages.KeyText)
 	builder.Build(pages.KeyFormText)
-
-	// builder.Build(pages.KeyCards)
 	builder.Build(pages.KeyFormCards)
-
-	// builder.Build(pages.KeyBinary)
 	builder.Build(pages.KeyFormBinary)
 
 	app.SetRoot(builder.GetPages().

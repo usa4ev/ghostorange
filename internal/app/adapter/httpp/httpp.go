@@ -33,12 +33,12 @@ func New(cfg config, logger *zap.SugaredLogger) (*Provider, error) {
 			PublicSuffixList: publicsuffix.List,
 		},
 	)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
 	cl.Jar = jar
-	
+
 	return &Provider{
 			client: http.DefaultClient,
 			cfg:    cfg},
@@ -76,23 +76,23 @@ func (prov Provider) Count(dataType int) (string, error) {
 	return string(message), nil
 }
 
-func (prov Provider) Register(item model.Credentials) (error) {
+func (prov Provider) Register(item model.Credentials) error {
 	buf := bytes.NewBuffer(nil)
 
-	if err := json.NewEncoder(buf).Encode(item); err != nil{
+	if err := json.NewEncoder(buf).Encode(item); err != nil {
 		return fmt.Errorf("failed to encode Register message: %w", err)
 	}
 
 	req, err := http.NewRequest(http.MethodPost,
 		fmt.Sprintf("http://%v/v1/users/register",
 			prov.cfg.SrvAddr()),
-			buf)
+		buf)
 
 	if err != nil {
 		return fmt.Errorf("failed to compose Register request: %w", err)
 	}
 
-	req.Header.Set("content-type", server.CTJSON)
+	req.Header.Set("Content-Type", server.CTJSON)
 
 	res, err := prov.client.Do(req)
 
@@ -113,13 +113,13 @@ func (prov Provider) Register(item model.Credentials) (error) {
 			res.StatusCode, string(message))
 	}
 
-	return  nil
+	return nil
 }
 
 func (prov Provider) Login(item model.Credentials) error {
 	buf := bytes.NewBuffer(nil)
 
-	if err := json.NewEncoder(buf).Encode(item); err != nil{
+	if err := json.NewEncoder(buf).Encode(item); err != nil {
 		return fmt.Errorf("failed to encode Register message: %w", err)
 	}
 
@@ -131,6 +131,8 @@ func (prov Provider) Login(item model.Credentials) error {
 	if err != nil {
 		return fmt.Errorf("failed to compose Login request: %w", err)
 	}
+
+	req.Header.Set("Content-Type", server.CTJSON)
 
 	res, err := prov.client.Do(req)
 
@@ -145,9 +147,9 @@ func (prov Provider) Login(item model.Credentials) error {
 		return fmt.Errorf("failed to read server Login response: %w", err)
 	}
 
-	if res.StatusCode ==  http.StatusUnauthorized{
+	if res.StatusCode == http.StatusUnauthorized {
 		return fmt.Errorf("login or password must be wrong")
-	}else if res.StatusCode != http.StatusOK {
+	} else if res.StatusCode != http.StatusOK {
 		return fmt.Errorf(`server returned unexpected code: %v 
 			response: %v`,
 			res.StatusCode, string(message))
@@ -186,7 +188,7 @@ func (prov Provider) GetData(dataType int) (any, error) {
 
 	obj, err := model.DecodeItemsJSON(dataType, message)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode server message: %v", dataType)
+		return nil, fmt.Errorf("failed to decode server message: %w", err)
 	}
 
 	return obj, nil
@@ -206,6 +208,8 @@ func (prov *Provider) AddData(dataType int, data any) error {
 		return fmt.Errorf("failed to compose AddData request: %w", err)
 	}
 
+	req.Header.Set("Content-Type", server.CTJSON)
+
 	res, err := prov.client.Do(req)
 
 	if err != nil {
@@ -216,7 +220,7 @@ func (prov *Provider) AddData(dataType int, data any) error {
 
 	message, err := io.ReadAll(res.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read server AppData response: %w", err)
+		return fmt.Errorf("failed to read server AddData response: %w", err)
 	}
 
 	if res.StatusCode != http.StatusCreated {
@@ -242,6 +246,8 @@ func (prov *Provider) UpdateData(dataType int, data any) error {
 		return fmt.Errorf("failed to compose UpdateData request: %w", err)
 	}
 
+	req.Header.Set("Content-Type", server.CTJSON)
+
 	res, err := prov.client.Do(req)
 
 	if err != nil {
@@ -252,16 +258,61 @@ func (prov *Provider) UpdateData(dataType int, data any) error {
 
 	message, err := io.ReadAll(res.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read server AppData response: %w", err)
+		return fmt.Errorf("failed to read server UpdateData response: %w", err)
 	}
 
-	if res.StatusCode != http.StatusAccepted {
+	if res.StatusCode != http.StatusCreated {
 		return fmt.Errorf(`server returned unexpected code: %v 
 			response: %v`,
 			res.StatusCode, string(message))
 	}
 
 	return nil
+}
+
+func (prov *Provider) GetCard(id, cvv string) (model.ItemCard, error) {
+	var item model.ItemCard
+
+	req, err := http.NewRequest(http.MethodGet,
+		fmt.Sprintf("http://%v/v1/data/cards/%v",
+			prov.cfg.SrvAddr(), id),
+		bytes.NewBuffer([]byte(cvv)))
+	if err != nil {
+		return item, fmt.Errorf("failed to compose GetCard request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", server.CTPlain)
+
+	res, err := prov.client.Do(req)
+
+	if err != nil {
+		return item, fmt.Errorf("GetCard request failed: %w", err)
+	}
+
+	defer res.Body.Close()
+
+	message, err := io.ReadAll(res.Body)
+	if err != nil {
+		return item, fmt.Errorf("failed to read server GetCard response: %w", err)
+	}
+
+	if res.StatusCode != http.StatusOK {
+		return item, fmt.Errorf(`server returned unexpected code: %v 
+			response: %v`,
+			res.StatusCode, string(message))
+	}
+
+	val, err := model.DecodeItemJSON(model.KeyCards, message)
+	if err != nil {
+		return item, fmt.Errorf("failed to decode server message: %w", err)
+	}
+
+	var ok bool
+	if item, ok = val.(model.ItemCard); !ok {
+		return item, fmt.Errorf("bad type decoded, expected model.ItemCard")
+	}
+
+	return item, nil
 }
 
 func (prov *Provider) Lg() *zap.SugaredLogger {

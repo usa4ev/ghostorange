@@ -1,77 +1,68 @@
 package pages
 
 import (
+	"fmt"
+
 	"github.com/rivo/tview"
 
 	"ghostorange/internal/app/model"
 )
 
-func (c *Constructor) textList() *tview.Flex {
-	flex := tview.NewFlex()
-	list := tview.NewList()
-	lflex := tview.NewFlex().
-		SetDirection(tview.FlexRow)
+func (c *Constructor) textList() listGenerator{
 	rflex := tview.NewFlex().
 		SetDirection(tview.FlexRow)
 	txtView := tview.NewTextView()
 
-	lflex.AddItem(list, 0, 1, true).
-		AddItem(tview.NewForm().
-			AddButton("Add", func() {
-				c.forgetCurItem()
-				c.Pages.SwitchToPage(KeyFormText)
-			}).
-			AddButton("Edit", func() {
-				c.Pages.SwitchToPage(KeyFormText)
-			}), 0, 1, false)
+	buttons := make(map[string]func())
 
-	rflex.AddItem(txtView, 0, 1, false).
-		SetBlurFunc(c.forgetCurItem)
+	buttons["Add"] = func() {
+		c.forgetCurItem()
+		c.Pages.SwitchToPage(KeyFormText)
+	}
 
-	flex.AddItem(lflex, 0, 1, true).
-		AddItem(rflex, 0, 1, false)
+	buttons["Edit"] = func() {
+		if val, ok := c.CurItem.(model.ItemText); ok && val.ID != "" {
+			c.Pages.SwitchToPage(KeyFormText)
+		}
+	}
 
 	var data []model.ItemText
 
-	list.SetFocusFunc(func() {
-		list.Clear()
-
-		var err error
-
-		val, err := c.Adapter.GetData(model.KeyText)
-		if err != nil {
-			// ToDo: handle error
-			c.Logger.Errorf("failed to get data: %v", err)
-			return
-		}
-
+	addItemF := func(val any, list *tview.List) error {
 		var ok bool
 		data, ok = val.([]model.ItemText)
 		if !ok {
-			// ToDo: handle error
-			return
+			return fmt.Errorf("got unexpected data type; expected: %v",
+				model.GetItemTitle(model.KeyText))
 		}
 
 		for _, item := range data {
 			list.AddItem(item.Name, item.Comment, '0', nil)
 		}
 
-		c.Logger.Debugf("Cred list set: %v", data)
+		return nil
+	}
 
-		list.SetSelectedFunc(
-			func(index int, name string, second_name string, shortcut rune) {
+	selectedF := func(index int, name string, second_name string, shortcut rune) {
 
-				item := data[index]
-				txtView.Clear().SetText(item.Text).SetTitle(item.Name)
+		item := data[index]
+		txtView.Clear().SetText(item.Text).SetTitle(item.Name)
 
-				c.CurItem = item
+		c.CurItem = item
 
-				c.Logger.Debugf("CurItem set: %v", c.CurItem)
-			})
+		c.Logger.Debugf("CurItem set: %v", c.CurItem)
+	}
 
-	})
+	rflex.AddItem(txtView, 0, 1, false).
+		SetBlurFunc(c.forgetCurItem)
 
-	return flex
+	return listGenerator{
+		btns:         buttons,
+		detail:       rflex,
+		Constructor:  c,
+		addItemFunc:  addItemF,
+		selectedFunc: selectedF,
+	}
 }
 
 func (c *Constructor) textForm() *tview.Form {
@@ -96,14 +87,23 @@ func (c *Constructor) textForm() *tview.Form {
 				item.Comment = text
 			}).
 			AddButton("Save", func() {
-				//ToDo: error handling
+				var err error
 				if item.ID == "" {
-					c.Adapter.AddData(model.KeyText, item)
+					err = c.Adapter.AddData(model.KeyText, item)
+					c.CurItem = item
 				} else {
-					c.Adapter.UpdateData(model.KeyText, item)
+					err = c.Adapter.UpdateData(model.KeyText, item)
 					c.CurItem = item
 				}
+
+				if err!= nil{
+					c.ShowMessage(fmt.Sprintf("Failed to save text: %v", err.Error()),
+						 KeyFormText)
+					return
+				}
+
 				form.Clear(true)
+				c.Build(KeyText)
 				c.Pages.SwitchToPage(KeyText)
 			}).
 			AddButton("Cancel", func() {

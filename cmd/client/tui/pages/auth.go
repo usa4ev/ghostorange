@@ -25,7 +25,7 @@ func (c *Constructor) loginForm() *tview.Form {
 				c.Build(KeyMenu)
 				c.Pages.SwitchToPage(KeyMenu)
 			} else {
-				c.ShowError(err.Error(), KeyLoginForm)
+				c.ShowMessage(err.Error(), KeyLoginForm)
 			}
 		}).
 		AddButton("Register", func() {
@@ -54,7 +54,7 @@ func (c *Constructor) regForm() *tview.Form {
 				c.Pages.SwitchToPage(KeyMenu)
 				creds = model.Credentials{}
 			} else {
-				c.ShowError(err.Error(), KeyRegistrationForm)
+				c.ShowMessage(err.Error(), KeyRegistrationForm)
 			}
 		})
 

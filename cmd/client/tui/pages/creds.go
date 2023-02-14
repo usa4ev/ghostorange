@@ -39,7 +39,7 @@ func (c *Constructor) credList() listGenerator {
 		data, ok = val.([]model.ItemCredentials)
 		if !ok {
 			return fmt.Errorf("got unexpected data type; expected: %v",
-				model.GetItemTitle(model.KeyCards))
+				model.GetItemTitle(model.KeyCredentials))
 		}
 
 		for _, item := range data {
@@ -100,20 +100,20 @@ func (c *Constructor) credForm() *tview.Form {
 				item.Comment = text
 			}).
 			AddButton("Save", func() {
-				//ToDo: error handling
 				if item.ID == "" {
 					if err := c.Adapter.AddData(model.KeyCredentials, item); err != nil {
-						c.ShowError(err.Error(), KeyFormCredentials)
+						c.ShowMessage(err.Error(), KeyFormCredentials)
 						return
 					}
 				} else {
 					if err := c.Adapter.UpdateData(model.KeyCredentials, item); err != nil {
-						c.ShowError(err.Error(), KeyFormCredentials)
+						c.ShowMessage(err.Error(), KeyFormCredentials)
 						return
 					}
 					c.CurItem = item
 				}
 				form.Clear(true)
+				c.Build(KeyCredentials)
 				c.Pages.SwitchToPage(KeyCredentials)
 			}).
 			AddButton("Cancel", func() {

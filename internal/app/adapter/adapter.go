@@ -20,6 +20,7 @@ type (
 		GetData(dataType int) (any, error)
 		AddData(dataType int, data any) error
 		UpdateData(dataType int, data any) error
+		GetCard(id, cvvHash string) (model.ItemCard, error)
 
 		Lg() *zap.SugaredLogger
 	}
