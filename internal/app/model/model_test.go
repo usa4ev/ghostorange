@@ -28,8 +28,9 @@ func TestEncodeDecodeItems(t *testing.T) {
 	b, err := EncodeItemsJSON(cases)
 	require.NoError(t, err)
 
-	val, err := DecodeItemsJSON[ItemCredentials](KeyCredentials, b)
+	val, err := DecodeItemsJSON(KeyCredentials, b)
 	require.NoError(t, err)
 
 	assert.EqualValues(t, cases, val)
 }
+

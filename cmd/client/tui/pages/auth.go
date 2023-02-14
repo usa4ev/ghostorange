@@ -1,7 +1,6 @@
 package pages
 
 import (
-	//"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 
 	"ghostorange/internal/app/model"
@@ -10,24 +9,25 @@ import (
 func (c *Constructor) loginForm() *tview.Form {
 	creds := model.Credentials{}
 
-	loginBtnAct := func() {
-		if c.Provider.Login(creds) {
-			// ToDo: successfull login logic
-		} else {
-			// ToDo: show error page
-		}
-
-		c.Pages.SwitchToPage(KeyMenu)
-	}
-
 	loginForm := tview.NewForm().
 		AddInputField("username", "", 25, nil, func(text string) {
 			creds.Login = text
 		}).
-		AddInputField("password", "", 25, nil, func(text string) {
+		AddPasswordField("password", "", 25, '*', func(text string) {
 			creds.Password = text
 		}).
-		AddButton("Login", loginBtnAct).
+		AddButton("Login", func() {
+			c.Logger.Debugf("login attempt, user %v",
+				creds.Login)
+			if err := c.Adapter.Login(creds); err == nil {
+				c.Logger.Debugf("successfull login, user %v",
+					creds.Login)
+				c.Build(KeyMenu)
+				c.Pages.SwitchToPage(KeyMenu)
+			} else {
+				c.ShowError(err.Error(), KeyLoginForm)
+			}
+		}).
 		AddButton("Register", func() {
 			c.Pages.SwitchToPage(KeyRegistrationForm)
 		})
@@ -36,15 +36,26 @@ func (c *Constructor) loginForm() *tview.Form {
 }
 
 func (c *Constructor) regForm() *tview.Form {
+	creds := model.Credentials{}
+
 	regForm := tview.NewForm().
-		AddInputField("username", "", 25, nil, nil).
-		AddInputField("password", "", 25, nil, nil).
-		AddInputField("email", "", 25, nil, nil).
+		AddInputField("username", creds.Login, 25, nil, func(text string) {
+			creds.Login = text
+		}).
+		AddPasswordField("password", creds.Password, 25, '*', func(text string) {
+			creds.Password = text
+		}).
 		AddButton("Back", func() {
 			c.Pages.SwitchToPage(KeyLoginForm)
 		}).
 		AddButton("Register", func() {
-			c.Pages.SwitchToPage(KeyLoginForm) // ToDo: replace target form
+			if err := c.Adapter.Register(creds); err == nil {
+				c.Build(KeyMenu)
+				c.Pages.SwitchToPage(KeyMenu)
+				creds = model.Credentials{}
+			} else {
+				c.ShowError(err.Error(), KeyRegistrationForm)
+			}
 		})
 
 	return regForm
