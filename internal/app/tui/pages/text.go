@@ -8,6 +8,8 @@ import (
 	"github.com/usa4ev/ghostorange/internal/app/model"
 )
 
+// Returns new list-page generator with all it needs to build
+// a new page.
 func (c *Constructor) textList() listGenerator {
 	rflex := tview.NewFlex().
 		SetDirection(tview.FlexRow)
@@ -65,6 +67,7 @@ func (c *Constructor) textList() listGenerator {
 	}
 }
 
+// Returns data type specific add/edit form 
 func (c *Constructor) textForm() *tview.Form {
 	form := tview.NewForm()
 

@@ -10,6 +10,8 @@ import (
 	"github.com/usa4ev/ghostorange/internal/pkg/argon2hash"
 )
 
+// Returns new list-page generator with all it needs to build
+// a new page.
 func (c *Constructor) cardsList() listGenerator {
 	rflex := tview.NewFlex().
 		SetDirection(tview.FlexRow)
@@ -92,6 +94,7 @@ func (c *Constructor) cardsList() listGenerator {
 	}
 }
 
+// Returns data type specific add/edit form 
 func (c *Constructor) cardsForm() *tview.Form {
 	form := tview.NewForm()
 	var cvv string

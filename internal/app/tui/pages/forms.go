@@ -38,6 +38,7 @@ type (
 		Logger  *zap.SugaredLogger
 	}
 
+	// listGenerator is builder for data type specific list-pages.
 	listGenerator struct {
 		*Constructor
 		btns         map[string]func()
@@ -97,6 +98,8 @@ func (c *Constructor) forgetCurItem() {
 	c.Logger.Debugf("Current item set: %v", c.CurItem)
 }
 
+// BuildList creates a data type specific list-generator
+// and newly generated list-page.
 func (c *Constructor) BuildList(key string) tview.Primitive {
 	lg := c.newListGenerator(key)
 	return lg.build()
