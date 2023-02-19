@@ -3,7 +3,8 @@ package storage
 import (
 	"context"
 
-	"ghostorange/internal/app/storage/psqldb"
+	"github.com/usa4ev/ghostorange/internal/app/model"
+	"github.com/usa4ev/ghostorange/internal/app/storage/psqldb"
 )
 
 type (
@@ -15,7 +16,7 @@ type (
 		Count(ctx context.Context, dataType int, user string) (int, error)
 		GetData(ctx context.Context, dataType int) (any, error)
 		AddData(ctx context.Context, dataType int, userID string, data any) error
-		UpdateData(ctx context.Context, dataType int, userID string, data any) error
+		GetCardInfo(ctx context.Context, id, userID string) (model.ItemCard, error)
 	}
 	config interface {
 		DBDSN() string

@@ -9,21 +9,13 @@ func TestNewConfig(t *testing.T) {
 
 	osArgs := []string{
 		"-a", "localhost:5555",
-		"-b", "http://localhost:5555",
-		"-f", "/storageTest.csv",
-		"-p", "./ssl",
-		"-t", "0.0.0.0",
-		"-s", "false",
-		"-d", "user=ubuntu password=test101825 host=localhost port=5432 dbname=testdb"}
+		"-d", "db",
+		"-s", "100ns",}
 
 	envVars := map[string]string{
-		"BASE_URL":          "http://localhost:5555",
 		"SERVER_ADDRESS":    "localhost:5555",
-		"FILE_STORAGE_PATH": "/storageTest.csv",
-		"SSL_PATH":          "./ssl",
-		"TRUSTED_SUBNET":    "0.0.0.0",
-		"ENABLE_HTTPS":      "false",
-		"DATABASE_DSN":      "user=ubuntu password=test101825 host=localhost port=5432 dbname=testdb",
+		"SESSION_LIFETIME":   "100ns",
+		"DATABASE_DSN":      "db",
 	}
 
 	filePath := "./testdata/1.json"
@@ -38,7 +30,8 @@ func TestNewConfig(t *testing.T) {
 			opts: []configOption{WithEnvVars(map[string]string{}), withOsArgs(osArgs)},
 			want: Config{
 				srvAddr:       "localhost:5555",
-				dbDSN:         "user=ubuntu password=test101825 host=localhost port=5432 dbname=testdb",
+				dbDSN:         "db",
+				sessionLifeTime: 100,
 			},
 		},
 		{
@@ -46,7 +39,8 @@ func TestNewConfig(t *testing.T) {
 			opts: []configOption{IgnoreOsArgs(), withOsArgs([]string{}), WithEnvVars(envVars)},
 			want: Config{
 				srvAddr:       "localhost:5555",
-				dbDSN:         "user=ubuntu password=test101825 host=localhost port=5432 dbname=testdb",
+				dbDSN:         "db",
+				sessionLifeTime: 100,
 			},
 		},
 		{
@@ -55,6 +49,7 @@ func TestNewConfig(t *testing.T) {
 			want: Config{
 				srvAddr:       "111",
 				dbDSN:         "111",
+				sessionLifeTime: 111,
 			},
 		},
 		{
@@ -62,7 +57,8 @@ func TestNewConfig(t *testing.T) {
 			opts: []configOption{WithEnvVars(map[string]string{}), withOsArgs(osArgs), WithFile(filePath)},
 			want: Config{
 				srvAddr:       "localhost:5555",
-				dbDSN:         "user=ubuntu password=test101825 host=localhost port=5432 dbname=testdb",
+				dbDSN:         "db",
+				sessionLifeTime: 100,
 			},
 		},
 		{
@@ -70,23 +66,22 @@ func TestNewConfig(t *testing.T) {
 			opts: []configOption{IgnoreOsArgs(), WithFile(filePath), withOsArgs([]string{}), WithEnvVars(envVars)},
 			want: Config{
 				srvAddr:       "localhost:5555",
-				dbDSN:         "user=ubuntu password=test101825 host=localhost port=5432 dbname=testdb",
+				dbDSN:         "db",
+				sessionLifeTime: 100,
 			},
 		},
 		{
 			name: "flags over vars",
 			opts: []configOption{withOsArgs(osArgs),
 				WithEnvVars(map[string]string{
-					"BASE_URL":          "111",
-					"SERVER_ADDRESS":    "111",
-					"FILE_STORAGE_PATH": "111",
-					"SSL_PATH":          "111",
-					"DATABASE_DSN":      "111",
-					"ENABLE_HTTPS":      "111",
+					"SERVER_ADDRESS":    "0:0",
+					"SESSION_LIFETIME":   "0",
+					"DATABASE_DSN":      "0",
 				})},
 			want: Config{
 				srvAddr:       "localhost:5555",
-				dbDSN:         "user=ubuntu password=test101825 host=localhost port=5432 dbname=testdb",
+				dbDSN:         "db",
+				sessionLifeTime: 100,
 			},
 		},
 	}
@@ -95,7 +90,8 @@ func TestNewConfig(t *testing.T) {
 			if got := New(tt.opts...); !reflect.DeepEqual(*got, tt.want) {
 				t.Errorf("New().DBDSN() = %v, want %v", got.DBDSN(), tt.want.dbDSN)
 				t.Errorf("New().SrvAddr() = %v, want %v", got.SrvAddr(), tt.want.srvAddr)
-			}
+				t.Errorf("New().SessionLifetime() = %v, want %v", got.SessionLifetime(), tt.want.sessionLifeTime)
+			}		
 		})
 	}
 }

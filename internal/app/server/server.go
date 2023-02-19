@@ -6,11 +6,12 @@ import (
 	"time"
 
 	"github.com/go-chi/chi"
+	chimw "github.com/go-chi/chi/middleware"
 
-	"ghostorange/internal/app/auth"
-	"ghostorange/internal/app/router"
-	"ghostorange/internal/app/server/middleware"
-	"ghostorange/internal/app/storage"
+	"github.com/usa4ev/ghostorange/internal/app/auth"
+	"github.com/usa4ev/ghostorange/internal/app/router"
+	"github.com/usa4ev/ghostorange/internal/app/server/middleware"
+	"github.com/usa4ev/ghostorange/internal/app/storage"
 )
 
 type (
@@ -42,18 +43,16 @@ func (srv *Server) Handlers() []router.HandlerDesc {
 	return []router.HandlerDesc{
 		// POST: /users/register
 		{Method: "POST",
-			Path:    "/v1/users/register",
-			Handler: http.HandlerFunc(srv.Register),
-			Middlewares: chi.Middlewares{
-				middleware.GzipMW},
+			Path:        "/v1/users/register",
+			Handler:     http.HandlerFunc(srv.Register),
+			Middlewares: nil,
 		},
 
 		// POST: /users/login
 		{Method: "POST",
-			Path:    "/v1/users/login",
-			Handler: http.HandlerFunc(srv.Login),
-			Middlewares: chi.Middlewares{
-				middleware.GzipMW},
+			Path:        "/v1/users/login",
+			Handler:     http.HandlerFunc(srv.Login),
+			Middlewares: nil,
 		},
 
 		// GET: /data?data_type={data_type}
@@ -61,7 +60,7 @@ func (srv *Server) Handlers() []router.HandlerDesc {
 			Path:    "/v1/data",
 			Handler: http.HandlerFunc(srv.GetData),
 			Middlewares: chi.Middlewares{
-				middleware.GzipMW,
+				chimw.Compress(5, CTJSON),
 				middleware.AuthorisationMW},
 		},
 
@@ -70,16 +69,16 @@ func (srv *Server) Handlers() []router.HandlerDesc {
 			Path:    "/v1/data",
 			Handler: http.HandlerFunc(srv.AddData),
 			Middlewares: chi.Middlewares{
-				middleware.GzipMW,
+				chimw.Compress(5, CTJSON),
 				middleware.AuthorisationMW},
 		},
 
 		// PUT: /data?data_type={data_type}
 		{Method: "PUT",
 			Path:    "/v1/data",
-			Handler: http.HandlerFunc(srv.UpdateData),
+			Handler: http.HandlerFunc(srv.AddData),
 			Middlewares: chi.Middlewares{
-				middleware.GzipMW,
+				chimw.Compress(5, CTJSON),
 				middleware.AuthorisationMW},
 		},
 
@@ -88,7 +87,16 @@ func (srv *Server) Handlers() []router.HandlerDesc {
 			Path:    "/v1/data/count",
 			Handler: http.HandlerFunc(srv.Count),
 			Middlewares: chi.Middlewares{
-				middleware.GzipMW,
+				chimw.Compress(5, CTJSON),
+				middleware.AuthorisationMW},
+		},
+
+		// GET: /v1/data/cards/{id}
+		{Method: "GET",
+			Path:    "/v1/data/cards/{id}",
+			Handler: http.HandlerFunc(srv.CardData),
+			Middlewares: chi.Middlewares{
+				chimw.Compress(5, CTJSON),
 				middleware.AuthorisationMW},
 		},
 	}

@@ -5,17 +5,14 @@ import (
 	"errors"
 	"fmt"
 
-	"ghostorange/internal/pkg/argon2hash"
+	"github.com/usa4ev/ghostorange/internal/pkg/argon2hash"
 )
 
-
-
 type (
-	UsrStorage interface{
+	UsrStorage interface {
 		GetPasswordHash(cxt context.Context, userName string) (string, string, error)
 		AddUser(ctx context.Context, username, hash string) (string, error)
 		UserExists(ctx context.Context, username string) (bool, error)
-	
 	}
 )
 

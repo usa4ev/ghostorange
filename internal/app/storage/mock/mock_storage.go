@@ -6,6 +6,7 @@ package mockstorage
 
 import (
 	context "context"
+	model "github.com/usa4ev/ghostorange/internal/app/model"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -78,6 +79,21 @@ func (mr *MockStorageMockRecorder) Count(ctx, dataType, user interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Count", reflect.TypeOf((*MockStorage)(nil).Count), ctx, dataType, user)
 }
 
+// GetCardInfo mocks base method.
+func (m *MockStorage) GetCardInfo(ctx context.Context, id, userID string) (model.ItemCard, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetCardInfo", ctx, id, userID)
+	ret0, _ := ret[0].(model.ItemCard)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetCardInfo indicates an expected call of GetCardInfo.
+func (mr *MockStorageMockRecorder) GetCardInfo(ctx, id, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCardInfo", reflect.TypeOf((*MockStorage)(nil).GetCardInfo), ctx, id, userID)
+}
+
 // GetData mocks base method.
 func (m *MockStorage) GetData(ctx context.Context, dataType int) (any, error) {
 	m.ctrl.T.Helper()
@@ -107,20 +123,6 @@ func (m *MockStorage) GetPasswordHash(cxt context.Context, userName string) (str
 func (mr *MockStorageMockRecorder) GetPasswordHash(cxt, userName interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPasswordHash", reflect.TypeOf((*MockStorage)(nil).GetPasswordHash), cxt, userName)
-}
-
-// UpdateData mocks base method.
-func (m *MockStorage) UpdateData(ctx context.Context, dataType int, userID string, data any) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateData", ctx, dataType, userID, data)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateData indicates an expected call of UpdateData.
-func (mr *MockStorageMockRecorder) UpdateData(ctx, dataType, userID, data interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateData", reflect.TypeOf((*MockStorage)(nil).UpdateData), ctx, dataType, userID, data)
 }
 
 // UserExists mocks base method.

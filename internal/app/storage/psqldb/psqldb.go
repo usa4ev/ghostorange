@@ -12,10 +12,10 @@ import (
 	"github.com/google/uuid"
 	_ "github.com/jackc/pgx/stdlib"
 
-	"ghostorange/internal/app/auth"
-	"ghostorange/internal/app/auth/session"
-	"ghostorange/internal/app/model"
-	"ghostorange/internal/pkg/encryption"
+	"github.com/usa4ev/ghostorange/internal/app/auth"
+	"github.com/usa4ev/ghostorange/internal/app/auth/session"
+	"github.com/usa4ev/ghostorange/internal/app/model"
+	"github.com/usa4ev/ghostorange/internal/pkg/encryption"
 )
 
 type (
@@ -54,13 +54,6 @@ func (db Database) initDB() error {
 		return fmt.Errorf("failed to create table users, %v", err)
 	}
 
-	// ItemCredentials struct {
-	// 	ID          string      `json:"id"`
-	// 	Credentials Credentials `json:"credentials"`
-	// 	Name        string      `json:"name"`
-	// 	Comment     string      `json:"comment"`
-	// }
-
 	query = `CREATE TABLE IF NOT EXISTS credentials (
 					id VARCHAR(100) PRIMARY KEY UNIQUE,
 					user_id VARCHAR(100) not null,
@@ -76,13 +69,6 @@ func (db Database) initDB() error {
 		return fmt.Errorf("failed to create table credentials, %v", err)
 	}
 
-	// ItemText struct {
-	// 	ID      string `json:"id"`
-	// 	Text    string `json:"text"`
-	// 	Name    string `json:"name"`
-	// 	Comment string `json:"comment"`
-	// }
-
 	query = `CREATE TABLE IF NOT EXISTS text (
 		id VARCHAR(100) PRIMARY KEY UNIQUE,
 		user_id varchar(100) not null,
@@ -97,15 +83,6 @@ func (db Database) initDB() error {
 	if err != nil {
 		return fmt.Errorf("failed to create table text, %v", err)
 	}
-
-	// ItemBinary struct {
-	// 	ID        string `json:"id"`
-	// 	Size      int    `json:"size"`
-	// 	Extention string `json:"extention"`
-	// 	Data      string `json:"data"`
-	// 	Name      string `json:"name"`
-	// 	Comment   string `json:"comment"`
-	// }
 
 	query = `CREATE TABLE IF NOT EXISTS binarydata (
 		id VARCHAR(100) PRIMARY KEY UNIQUE,
@@ -124,22 +101,12 @@ func (db Database) initDB() error {
 		return fmt.Errorf("failed to create table binary, %v", err)
 	}
 
-	// ItemCard struct {
-	// 	ID                 string    `json:"id"`
-	// 	Number             string    `json:"number"`
-	// 	Exp                time.Time `json:"expiration_date"`
-	// 	CardholderName     string    `json:"holder_name"`
-	// 	CardholderSurename string    `json:"holder_surename"`
-	// 	CVVHash            string    `json:"cvv_hash"`
-	// 	Name               string    `json:"name"`
-	// 	Comment            string    `json:"comment"`
-	// }
-
 	query = `CREATE TABLE IF NOT EXISTS cards (
 		id VARCHAR(100) PRIMARY KEY UNIQUE,
 		user_id varchar(100) not null,
 		ts timestamptz not null,
-		number char(8) not null,
+		number char(16) not null,
+		full_number char(16) not null,
 		expires date not null,
 		cardholderName varchar(255) not null,
 		cardholderSurename varchar(255) not null,
@@ -437,7 +404,6 @@ func itemCardFromRow(rows *sql.Rows) (model.ItemCard, error) {
 	// fields: id, number, cvvhash, name, comment
 	err := rows.Scan(&item.ID,
 		&item.Number,
-		&item.CVVHash,
 		&item.Name,
 		&item.Comment)
 
@@ -555,7 +521,24 @@ func assertItem[T model.Item](data any) (T, error) {
 	return val, nil
 }
 
-func (db *Database) UpdateData(ctx context.Context, dataType int, userID string, data any) error {
+func (db *Database) GetCardInfo(ctx context.Context, id, userID string) (model.ItemCard, error) {
+	query := `SELECT id, full_number, expires, 
+		cardholdername, cardholdersurename, 
+		cvvhash, name, comment FROM cards 
+		WHERE id = $1 AND user_id = $2`
 
-	return nil
+	res := model.ItemCard{}
+	err := db.QueryRowContext(ctx, query, id, userID).
+		Scan(&res.ID, &res.Number, &res.Exp,
+			&res.CardholderName, &res.CardholderSurename,
+			&res.CVVHash, &res.Name, &res.Comment)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		// ToDo: replace with a public error
+		return res, fmt.Errorf("item not found")
+	} else if err != nil {
+		return res, fmt.Errorf("failed to get card data from Database: %w", err)
+	}
+
+	return res, nil
 }

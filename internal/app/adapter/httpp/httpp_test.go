@@ -10,12 +10,12 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"ghostorange/cmd/client/tui/clconfig"
-	"ghostorange/internal/app/model"
-	"ghostorange/internal/app/server"
-	"ghostorange/internal/app/srvconfig"
-	"ghostorange/internal/app/storage"
-	mockstorage "ghostorange/internal/app/storage/mock"
+	"github.com/usa4ev/ghostorange/internal/app/model"
+	"github.com/usa4ev/ghostorange/internal/app/server"
+	"github.com/usa4ev/ghostorange/internal/app/srvconfig"
+	"github.com/usa4ev/ghostorange/internal/app/storage"
+	mockstorage "github.com/usa4ev/ghostorange/internal/app/storage/mock"
+	"github.com/usa4ev/ghostorange/internal/app/tui/clconfig"
 )
 
 func TestProvider(t *testing.T) {
@@ -38,7 +38,7 @@ func TestProvider(t *testing.T) {
 		AddUser(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return("user_id", nil)
 
-		strg.EXPECT().
+	strg.EXPECT().
 		UserExists(gomock.Any(), gomock.Any()).
 		Return(false, nil)
 
@@ -48,7 +48,6 @@ func TestProvider(t *testing.T) {
 	t.Run("Get Credentials", func(t *testing.T) {
 		tt := []model.ItemCredentials{
 			{ID: "id",
-				User: "user_id",
 				Credentials: model.Credentials{
 					Login:    "login",
 					Password: "password",
@@ -74,14 +73,13 @@ func TestProvider(t *testing.T) {
 	t.Run("Add Credentials", func(t *testing.T) {
 		tt := model.ItemCredentials{
 			ID: "id",
-				User: "user_id",
-				Credentials: model.Credentials{
-					Login:    "login",
-					Password: "password",
-				},
-				Name:    "case 1",
-				Comment: "lucky green",
-			}
+			Credentials: model.Credentials{
+				Login:    "login",
+				Password: "password",
+			},
+			Name:    "case 1",
+			Comment: "lucky green",
+		}
 
 		strg.EXPECT().
 			AddData(gomock.Any(), model.KeyCredentials, gomock.Any(), tt).
@@ -92,7 +90,7 @@ func TestProvider(t *testing.T) {
 	})
 
 	t.Run("Count", func(t *testing.T) {
-		
+
 		tt := 100
 
 		strg.EXPECT().
@@ -105,6 +103,30 @@ func TestProvider(t *testing.T) {
 		assert.Equal(t, strconv.Itoa(tt), res)
 	})
 
+	t.Run("Get Card", func(t *testing.T) {
+		tt := model.ItemCard{
+			ID:                 "id",
+			Number:             "1001",
+			Exp:                time.Now().Add(time.Hour * 24000),
+			CardholderName:     "mr. Cardholder",
+			CardholderSurename: "Smith",
+			CVVHash:            "secure",
+			Name:               "case 1",
+			Comment:            "lucky green",
+		}
+
+		strg.EXPECT().
+			GetCardInfo(gomock.Any(), tt.ID, gomock.Any()).
+			Return(tt, nil)
+
+		item, err := prov.GetCard(tt.ID, tt.CVVHash)
+		require.NoError(t, err)
+
+		assert.WithinDuration(t, tt.Exp, item.Exp, 0)
+		tt.Exp = time.Time{}
+		item.Exp = time.Time{}
+		assert.Equal(t, tt, item)
+	})
 }
 
 func testSrv(strg storage.Storage) *server.Server {

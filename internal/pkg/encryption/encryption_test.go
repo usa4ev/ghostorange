@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"ghostorange/internal/app/model"
+	"github.com/usa4ev/ghostorange/internal/app/model"
 )
 
 func TestEncryptDecrypt(t *testing.T) {
