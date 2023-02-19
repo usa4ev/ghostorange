@@ -1,0 +1,36 @@
+FROM golang:1.19.6-alpine3.17
+
+RUN apk update
+
+# Install git
+RUN apk add --no-cache --upgrade git 
+
+# Install bash
+RUN apk add --no-cache --upgrade bash
+
+# Install make
+RUN apk add --no-cache make
+
+#Get ghostorange src
+WORKDIR /ghostorange 
+RUN git clone https://github.com/usa4ev/ghostorange ./
+    
+# Set srv config
+ENV SERVER_ADDRESS="ghostorange:8080"
+ENV DATABASE_DSN="user=postgres password=postgres host=postgres port=5432 dbname=postgres"
+ENV SESSION_LIFETIME="1000000000000"
+
+# Build ghostorange
+RUN make build-srv-linux && chmod +x GOrangeServer-linux
+
+# Cleanup
+RUN apk del git && apk del bash && apk del make 
+
+EXPOSE 8080
+
+WORKDIR /ghostorange/bin
+ 
+CMD ["./GOrangeServer-linux"] 
+
+
+
