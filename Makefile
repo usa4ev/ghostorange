@@ -1,5 +1,5 @@
 CLI_SRC=./cmd/client/main.go
-SRV_SRC=./cmd/github.com/usa4ev/ghostorange/main.go
+SRV_SRC=./cmd/ghostorange/main.go
 CLI_BINARY_NAME=tuiGOrange
 SRV_BINARY_NAME=GOrangeServer
 BIN_PATH=./bin
